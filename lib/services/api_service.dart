@@ -41,7 +41,9 @@ class ApiService {
   }
 
   Future<List<Ayah>> getSurahAyahs(int surahNumber,
-      {String edition = 'ar', String translationEdition = 'en.sahih'}) async {
+      {String edition = 'ar',
+      String translationEdition = 'en.sahih',
+      String audioDir = 'Yasser_Al_Dosari_128kbps'}) async {
     // Get Arabic text
     final arabicResponse = await _client.get(
       Uri.parse('$baseUrl/surah/$surahNumber/ar'),
@@ -54,20 +56,31 @@ class ApiService {
       headers: {'Accept': 'application/json'},
     );
 
+    // Get Tajweed-tagged text (Tanzil markup)
+    final tajweedResponse = await _client.get(
+      Uri.parse('$baseUrl/surah/$surahNumber/quran-tajweed'),
+      headers: {'Accept': 'application/json'},
+    );
+
     if (arabicResponse.statusCode == 200 && translationResponse.statusCode == 200) {
       final arabicData = json.decode(arabicResponse.body);
       final translationData = json.decode(translationResponse.body);
 
       final arabicAyahs = arabicData['data']['ayahs'] as List<dynamic>;
       final translationAyahs = translationData['data']['ayahs'] as List<dynamic>;
+      final tajweedAyahs = (tajweedResponse.statusCode == 200)
+          ? (json.decode(tajweedResponse.body)['data']['ayahs'] as List<dynamic>)
+          : <dynamic>[];
 
       return arabicAyahs.asMap().entries.map((entry) {
         final index = entry.key;
         final arabicAyah = entry.value;
         final translationAyah = index < translationAyahs.length ? translationAyahs[index] : {};
+        final tajweedAyah = index < tajweedAyahs.length ? tajweedAyahs[index] : {};
 
+        final ayahNumber = arabicAyah['number'] ?? 0;
         return Ayah(
-          number: arabicAyah['number'] ?? 0,
+          number: ayahNumber,
           surahNumber: surahNumber,
           numberInSurah: arabicAyah['numberInSurah'] ?? 0,
           juz: arabicAyah['juz'] ?? 0,
@@ -78,7 +91,8 @@ class ApiService {
           text: translationAyah['text'] ?? '',
           textArabic: arabicAyah['text'] ?? '',
           translation: translationAyah['text'] ?? '',
-          audioUrl: 'https://verses.quran.com/${arabicAyah['number']}.mp3',
+          audioUrl: 'https://verses.quran.com/$audioDir/$ayahNumber.mp3',
+          textTajweed: tajweedAyah['text'] ?? '',
         );
       }).toList();
     }
@@ -86,8 +100,8 @@ class ApiService {
     throw Exception('Failed to load ayahs');
   }
 
-  Future<String> getAyahAudio(int ayahNumber, String reciter) async {
-    return 'https://verses.quran.com/$ayahNumber.mp3';
+  String getAyahAudio(int ayahNumber, {String audioDir = 'Yasser_Al_Dosari_128kbps'}) {
+    return 'https://verses.quran.com/$audioDir/$ayahNumber.mp3';
   }
 
   // Prayer Times API (Aladhan)

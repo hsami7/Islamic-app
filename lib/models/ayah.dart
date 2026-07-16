@@ -40,6 +40,9 @@ class Ayah extends HiveObject {
   @HiveField(11)
   final String audioUrl;
 
+  @HiveField(12)
+  final String textTajweed;
+
   Ayah({
     required this.number,
     required this.surahNumber,
@@ -53,6 +56,7 @@ class Ayah extends HiveObject {
     required this.textArabic,
     required this.translation,
     required this.audioUrl,
+    this.textTajweed = '',
   });
 
   factory Ayah.fromJson(Map<String, dynamic> json) {
@@ -69,6 +73,7 @@ class Ayah extends HiveObject {
       textArabic: json['textArabic'] ?? '',
       translation: json['translation'] ?? '',
       audioUrl: json['audio'] ?? '',
+      textTajweed: json['textTajweed'] ?? '',
     );
   }
 
@@ -86,6 +91,7 @@ class Ayah extends HiveObject {
       'textArabic': textArabic,
       'translation': translation,
       'audioUrl': audioUrl,
+      'textTajweed': textTajweed,
     };
   }
 

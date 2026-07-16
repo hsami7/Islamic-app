@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/surah.dart';
 import '../models/ayah.dart';
 import '../models/user_settings.dart';
+import '../models/reciter.dart';
 import '../services/api_service.dart';
 import '../services/storage_service.dart';
 
@@ -19,6 +20,12 @@ class QuranProvider extends ChangeNotifier {
 
   List<Bookmark> _quranBookmarks = [];
 
+  // Selected reciter (audio playback)
+  Reciter _selectedReciter = Reciter.byId('yasser_al_dosari');
+  bool _reciterLoaded = false;
+
+  Reciter get selectedReciter => _selectedReciter;
+
   // Getters
   List<Surah> get surahs => _surahs;
   bool get isLoadingSurahs => _isLoadingSurahs;
@@ -28,6 +35,9 @@ class QuranProvider extends ChangeNotifier {
   // Load all surahs
   Future<void> loadSurahs({bool forceRefresh = false}) async {
     if (_surahs.isNotEmpty && !forceRefresh) return;
+
+    // Load persisted reciter selection first (needed for audio urls)
+    await loadSelectedReciter();
 
     _isLoadingSurahs = true;
     _surahsError = null;
@@ -54,6 +64,29 @@ class QuranProvider extends ChangeNotifier {
     }
   }
 
+  // Load selected reciter from storage
+  Future<void> loadSelectedReciter() async {
+    if (_reciterLoaded) return;
+    final id = StorageService.getSelectedReciterId();
+    _selectedReciter = Reciter.byId(id);
+    _reciterLoaded = true;
+    notifyListeners();
+  }
+
+  // Change reciter (persists + invalidates cached ayah audio urls)
+  Future<void> setReciter(Reciter reciter) async {
+    _selectedReciter = reciter;
+    await StorageService.saveSelectedReciterId(reciter.id);
+    // Clear ayah cache so audio urls + (non-tajweed) fields rebuild with new reciter
+    _surahAyahsCache.clear();
+    _juzSurahsCache.clear();
+    notifyListeners();
+  }
+
+  // Reciter-aware audio url for a global ayah number
+  String getAyahAudioUrl(int ayahNumber) =>
+      apiService.getAyahAudio(ayahNumber, audioDir: _selectedReciter.audioDir);
+
   // Load ayahs for a surah
   Future<List<Ayah>> loadSurahAyahs(int surahNumber,
       {bool forceRefresh = false}) async {
@@ -76,7 +109,8 @@ class QuranProvider extends ChangeNotifier {
         ayahs = localAyahs;
       } else {
         // Fetch from API
-        ayahs = await apiService.getSurahAyahs(surahNumber);
+        ayahs = await apiService.getSurahAyahs(surahNumber,
+            audioDir: _selectedReciter.audioDir);
         await StorageService.saveAyahs(ayahs);
       }
 

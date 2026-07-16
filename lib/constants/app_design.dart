@@ -39,6 +39,10 @@ class IslamicColors {
   static const Color qiblaOrange = Color(0xFFFF9F0A);
   static const Color azkarRed = Color(0xFFFF453A);
 
+  // Quran reader surface
+  static const Color beigeSurface = Color(0xFFF3EAD9);
+  static const Color darkBeigeSurface = Color(0xFF1A1714);
+
   // Dark mode
   static const Color darkPrimaryGreen = Color(0xFF30D158);
   static const Color darkSecondaryGreen = Color(0xFF1A3D2E);

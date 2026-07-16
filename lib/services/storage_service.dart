@@ -18,6 +18,7 @@ class StorageService {
   static const String _bookmarksBox = 'bookmarks';
   static const String _progressBox = 'quran_progress';
   static const String _weatherBox = 'weather';
+  static const String _metaBox = 'app_meta'; // plain string flags (e.g. reciter id)
 
   static bool _initialized = false;
 
@@ -46,6 +47,7 @@ class StorageService {
     await Hive.openBox<Bookmark>(_bookmarksBox);
     await Hive.openBox(_progressBox); // plain map: surahNumber -> lastAyah
     await Hive.openBox(_weatherBox); // plain map: date -> weather json
+    await Hive.openBox(_metaBox); // plain string flags
 
     _initialized = true;
   }
@@ -263,6 +265,21 @@ class StorageService {
     final key = '${DateTime.now().year}-${DateTime.now().month.toString().padLeft(2, '0')}-${DateTime.now().day.toString().padLeft(2, '0')}';
     final data = _weatherBoxInstance.get(key);
     return data is Map ? Map<String, dynamic>.from(data) : null;
+  }
+
+  // Selected Quran reciter id (plain string in app_meta box)
+  static const String _reciterKey = 'selected_reciter_id';
+
+  static String getSelectedReciterId() {
+    if (!_initialized) return 'yasser_al_dosari';
+    final box = Hive.box(_metaBox);
+    return box.get(_reciterKey, defaultValue: 'yasser_al_dosari') as String;
+  }
+
+  static Future<void> saveSelectedReciterId(String id) async {
+    if (!_initialized) return;
+    final box = Hive.box(_metaBox);
+    await box.put(_reciterKey, id);
   }
 
   // Clear all data

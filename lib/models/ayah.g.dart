@@ -29,13 +29,14 @@ class AyahAdapter extends TypeAdapter<Ayah> {
       textArabic: fields[9] as String,
       translation: fields[10] as String,
       audioUrl: fields[11] as String,
+      textTajweed: fields[12] as String? ?? '',
     );
   }
 
   @override
   void write(BinaryWriter writer, Ayah obj) {
     writer
-      ..writeByte(12)
+      ..writeByte(13)
       ..writeByte(0)
       ..write(obj.number)
       ..writeByte(1)
@@ -59,7 +60,9 @@ class AyahAdapter extends TypeAdapter<Ayah> {
       ..writeByte(10)
       ..write(obj.translation)
       ..writeByte(11)
-      ..write(obj.audioUrl);
+      ..write(obj.audioUrl)
+      ..writeByte(12)
+      ..write(obj.textTajweed);
   }
 
   @override
