@@ -52,14 +52,80 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen>
         controller: _scrollController,
         slivers: [
           _buildSliverAppBar(prayerProvider, settings),
+          _buildDateHeader(prayerProvider, settings),
           if (prayerProvider.isOffline)
             _buildOfflineNotice(prayerProvider, settings),
           if (prayerProvider.error != null && prayerProvider.todayPrayerTimes == null)
             _buildErrorCard(prayerProvider, settings),
           _buildNextPrayerCard(prayerProvider, settings),
-          _buildTabBar(isDark),
+          _buildTabBar(isDark, settings),
           _buildTabBarView(prayerProvider, settings),
         ],
+      ),
+    );
+  }
+
+  Widget _buildDateHeader(PrayerTimesProvider provider, SettingsProvider settings) {
+    final hijriDate = provider.todayPrayerTimes?.hijriDate;
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          IslamicSpacing.lg,
+          IslamicSpacing.md,
+          IslamicSpacing.lg,
+          IslamicSpacing.xs,
+        ),
+        child: Column(
+          children: [
+            if (hijriDate != null) ...[
+              Text(
+                settings.locale.languageCode == 'ar'
+                    ? hijriDate.formattedArabic
+                    : hijriDate.formatted,
+                style: IslamicTextStyles.headlineMedium.copyWith(
+                  color: IslamicColors.prayerBlue,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                toLatinDigits(
+                  DateFormat.yMMMMd(settings.locale.languageCode)
+                      .format(DateTime.now()),
+                ),
+                style: IslamicTextStyles.bodyMedium.copyWith(
+                  color: settings.isDarkMode
+                      ? IslamicColors.darkLabelSecondary
+                      : IslamicColors.labelSecondary,
+                ),
+              ),
+            ],
+            if (provider.currentCity.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    CupertinoIcons.location_fill,
+                    size: 14,
+                    color: settings.isDarkMode
+                        ? IslamicColors.darkLabelTertiary
+                        : IslamicColors.labelTertiary,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    provider.currentCity,
+                    style: IslamicTextStyles.bodySmall.copyWith(
+                      color: settings.isDarkMode
+                          ? IslamicColors.darkLabelTertiary
+                          : IslamicColors.labelTertiary,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -67,8 +133,10 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen>
   Widget _buildSliverAppBar(PrayerTimesProvider provider, SettingsProvider settings) {
     final hijriDate = provider.todayPrayerTimes?.hijriDate;
 
+    final isDark = settings.isDarkMode;
+
     return SliverAppBar(
-      expandedHeight: 140,
+      expandedHeight: 70,
       floating: true,
       snap: true,
       pinned: true,
@@ -90,61 +158,6 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen>
                 IslamicColors.primaryGreen.withValues(alpha: 0.05),
               ],
             ),
-          ),
-          child: Stack(
-            children: [
-              Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (hijriDate != null) ...[
-                      Text(
-                        settings.locale.languageCode == 'ar'
-                            ? hijriDate.formattedArabic
-                            : hijriDate.formatted,
-                        style: IslamicTextStyles.headlineMedium.copyWith(
-                          color: IslamicColors.prayerBlue,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        toLatinDigits(
-                          DateFormat.yMMMMd(settings.locale.languageCode)
-                              .format(DateTime.now()),
-                        ),
-                        style: IslamicTextStyles.bodyMedium.copyWith(
-                          color: IslamicColors.labelSecondary,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              if (provider.currentCity.isNotEmpty)
-                Positioned(
-                  bottom: 16,
-                  left: 16,
-                  right: 16,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        CupertinoIcons.location_fill,
-                        size: 14,
-                        color: IslamicColors.labelTertiary,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        provider.currentCity,
-                        style: IslamicTextStyles.bodySmall.copyWith(
-                          color: IslamicColors.labelTertiary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-            ],
           ),
         ),
       ),
@@ -219,7 +232,7 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen>
                     Text(
                       'next_prayer'.tr(),
                       style: IslamicTextStyles.labelMedium.copyWith(
-                        color: IslamicColors.labelSecondary,
+                        color: settings.isDarkMode ? IslamicColors.darkLabelSecondary : IslamicColors.labelSecondary,
                       ),
                     ),
                     Container(
@@ -259,7 +272,7 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen>
                     Text(
                       timeRemaining,
                       style: IslamicTextStyles.headlineSmall.copyWith(
-                        color: IslamicColors.labelSecondary,
+                        color: settings.isDarkMode ? IslamicColors.darkLabelSecondary : IslamicColors.labelSecondary,
                       ),
                     ),
                   ],
@@ -279,7 +292,7 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen>
                 Text(
                   '${(progress * 100).round()}% ${'elapsed_since_last_prayer'.tr()}',
                   style: IslamicTextStyles.bodySmall.copyWith(
-                    color: IslamicColors.labelTertiary,
+                    color: settings.isDarkMode ? IslamicColors.darkLabelTertiary : IslamicColors.labelTertiary,
                   ),
                 ),
               ],
@@ -323,7 +336,7 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen>
                   style: IslamicTextStyles.bodySmall.copyWith(
                     color: isDark
                         ? IslamicColors.darkLabelSecondary
-                        : IslamicColors.labelSecondary,
+                        : settings.isDarkMode ? IslamicColors.darkLabelSecondary : IslamicColors.labelSecondary,
                   ),
                 ),
               ),
@@ -381,7 +394,7 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen>
     );
   }
 
-  Widget _buildTabBar(bool isDark) {
+  Widget _buildTabBar(bool isDark, SettingsProvider settings) {
     return SliverPersistentHeader(
       pinned: true,
       delegate: _TabBarDelegate(
@@ -395,7 +408,7 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen>
           labelColor: IslamicColors.prayerBlue,
           unselectedLabelColor: isDark
               ? IslamicColors.darkLabelTertiary
-              : IslamicColors.labelTertiary,
+              : settings.isDarkMode ? IslamicColors.darkLabelTertiary : IslamicColors.labelTertiary,
           dividerColor: Colors.transparent,
           tabs: [
             Tab(text: 'today'.tr()),
@@ -526,7 +539,7 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen>
                   Text(
                     prayer.name.tr(),
                     style: IslamicTextStyles.bodySmall.copyWith(
-                      color: IslamicColors.labelTertiary,
+                      color: settings.isDarkMode ? IslamicColors.darkLabelTertiary : IslamicColors.labelTertiary,
                     ),
                   ),
                 ],
@@ -541,7 +554,7 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen>
                   prayer.time,
                   style: IslamicTextStyles.headlineSmall.copyWith(
                     color: hasPassed
-                        ? IslamicColors.labelTertiary
+                        ? settings.isDarkMode ? IslamicColors.darkLabelTertiary : IslamicColors.labelTertiary
                         : IslamicColors.prayerBlue,
                     fontWeight: FontWeight.w600,
                   ),
@@ -549,7 +562,7 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen>
                 Text(
                   hasPassed ? 'passed'.tr() : 'remaining'.tr(),
                   style: IslamicTextStyles.bodySmall.copyWith(
-                    color: IslamicColors.labelTertiary,
+                    color: settings.isDarkMode ? IslamicColors.darkLabelTertiary : IslamicColors.labelTertiary,
                   ),
                 ),
               ],
@@ -633,7 +646,7 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(CupertinoIcons.calendar, size: 48, color: IslamicColors.labelTertiary),
+            Icon(CupertinoIcons.calendar, size: 48, color: settings.isDarkMode ? IslamicColors.darkLabelTertiary : IslamicColors.labelTertiary),
             const SizedBox(height: IslamicSpacing.md),
             Text('no_data'.tr(), style: IslamicTextStyles.bodyMedium),
           ],
@@ -677,7 +690,7 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen>
                     DateFormat.d(settings.locale.languageCode).format(day.date),
                   ),
                   style: IslamicTextStyles.bodyMedium.copyWith(
-                    color: IslamicColors.labelSecondary,
+                    color: settings.isDarkMode ? IslamicColors.darkLabelSecondary : IslamicColors.labelSecondary,
                   ),
                 ),
                 const Spacer(),
@@ -718,7 +731,7 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen>
                     '${prayer.arabicName.tr()} ${prayer.time}',
                     style: IslamicTextStyles.labelSmall.copyWith(
                       color: hasPassed
-                          ? IslamicColors.labelTertiary
+                          ? settings.isDarkMode ? IslamicColors.darkLabelTertiary : IslamicColors.labelTertiary
                           : IslamicColors.prayerBlue,
                       fontWeight: FontWeight.w500,
                     ),
