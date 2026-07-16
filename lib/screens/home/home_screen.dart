@@ -815,22 +815,35 @@ class _SunArcPainter extends CustomPainter {
     // Keep the whole semicircle inside the canvas (no negative Y, no overflow).
     final radius = (size.width / 2 - 16).clamp(0.0, size.height - 12);
 
-    final arcPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.35)
+    // Faint full track (the sky path).
+    final trackPaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.22)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 3;
-
-    // Top half-circle arc (sunrise left -> sunset right).
+      ..strokeWidth = 3
+      ..strokeCap = StrokeCap.round;
     canvas.drawArc(
       Rect.fromLTRB(cx - radius, cy - radius, cx + radius, cy + radius),
       0,
       pi,
       false,
-      arcPaint,
+      trackPaint,
     );
 
-    // Sun position along the arc. progress 0 = left (sunrise), 1 = right (sunset).
+    // Gold progress arc: from sunrise (left) up to the sun's current angle.
     final angle = pi - (progress.clamp(0.0, 1.0) * pi);
+    final progressPaint = Paint()
+      ..color = IslamicColors.accentGold
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4
+      ..strokeCap = StrokeCap.round;
+    canvas.drawArc(
+      Rect.fromLTRB(cx - radius, cy - radius, cx + radius, cy + radius),
+      pi, // start at left (sunrise)
+      (pi - angle), // sweep up to current sun angle
+      false,
+      progressPaint,
+    );
+
     final sunX = cx + radius * cos(angle);
     final sunY = cy - radius * sin(angle);
 

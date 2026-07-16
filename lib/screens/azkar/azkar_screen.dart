@@ -618,28 +618,37 @@ class _AzkarCounterSheetState extends State<_AzkarCounterSheet>
                         builder: (context, child) {
                           return Transform.scale(
                             scale: 1.0 + (_animationController.value * 0.2),
-                            child: Text(
-                              '$_count',
-                              style: IslamicTextStyles.displayLarge.copyWith(
-                                fontSize: 72,
-                                fontWeight: FontWeight.w300,
-                                color: _count >= widget.azkar.count
-                                    ? IslamicColors.primaryGreen
-                                    : (isDark
-                                        ? IslamicColors.darkLabelPrimary
-                                        : IslamicColors.labelPrimary),
+                            child: RichText(
+                              textAlign: TextAlign.center,
+                              text: TextSpan(
+                                children: [
+                                  TextSpan(
+                                    text: '${widget.azkar.count}',
+                                    style: IslamicTextStyles.displayLarge.copyWith(
+                                      fontSize: 64,
+                                      fontWeight: FontWeight.w300,
+                                      color: _count >= widget.azkar.count
+                                          ? IslamicColors.primaryGreen
+                                          : (isDark
+                                              ? IslamicColors.darkLabelPrimary
+                                              : IslamicColors.labelPrimary),
+                                    ),
+                                  ),
+                                  TextSpan(
+                                    text: '/$_count',
+                                    style: IslamicTextStyles.displayLarge.copyWith(
+                                      fontSize: 32,
+                                      fontWeight: FontWeight.w400,
+                                      color: isDark
+                                          ? IslamicColors.darkLabelTertiary
+                                          : IslamicColors.labelTertiary,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           );
                         },
-                      ),
-                      Text(
-                        '/${widget.azkar.count}',
-                        style: IslamicTextStyles.headlineSmall.copyWith(
-                          color: isDark
-                              ? IslamicColors.darkLabelTertiary
-                              : IslamicColors.labelTertiary,
-                        ),
                       ),
                     ],
                   ),
