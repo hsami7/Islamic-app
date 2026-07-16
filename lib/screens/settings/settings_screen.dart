@@ -5,7 +5,6 @@ import 'package:easy_localization/easy_localization.dart';
 import '../../constants/app_design.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/quran_provider.dart';
-import '../../providers/prayer_times_provider.dart';
 import '../../providers/azkar_provider.dart';
 import '../../services/storage_service.dart';
 
@@ -130,7 +129,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _buildSettingsCard([
           _buildListTile(
             'calculation_method'.tr(),
-            settings.settings.calculationMethod.toString(),
+            _getCalculationMethodLabel(settings),
             CupertinoIcons.gear_alt,
             onTap: () => _showCalculationMethodPicker(settings),
           ),
@@ -181,7 +180,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           _buildListTile(
             'reciter'.tr(),
-            settings.settings.quranReciter,
+            _getReciterLabel(settings.settings.quranReciter),
             CupertinoIcons.music_note,
             onTap: () => _showReciterPicker(settings),
           ),
@@ -249,7 +248,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader('general'.tr(), CupertinoIcons.paintbrush, IslamicColors.hadithPurple),
+        _buildSectionHeader('general'.tr(), CupertinoIcons.paintbrush, IslamicColors.quranGold),
         _buildSettingsCard([
           _buildSwitchTile(
             'haptic_feedback'.tr(),
@@ -490,23 +489,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   String _getMadhabLabel(SettingsProvider settings) {
-    return settings.settings.madhab == 0 ? 'Shafi' : 'Hanafi';
+    return settings.settings.madhab == 0 ? 'shafi'.tr() : 'hanafi'.tr();
+  }
+
+  String _getCalculationMethodLabel(SettingsProvider settings) {
+    final method = SettingsProvider.calculationMethods.firstWhere(
+      (m) => m.id == settings.settings.calculationMethod,
+      orElse: () => SettingsProvider.calculationMethods.first,
+    );
+    return '${method.id} · ${method.name}';
   }
 
   String _getTranslationLanguageLabel(SettingsProvider settings) {
     switch (settings.settings.translationLanguage) {
       case 'en.sahih':
-        return 'English (Sahih International)';
+        return 'english_sahih'.tr();
       case 'ar.ar':
-        return 'Arabic';
+        return 'arabic'.tr();
       case 'fr.hamidullah':
-        return 'French';
+        return 'french'.tr();
       case 'tr.diyanet':
-        return 'Turkish';
+        return 'turkish'.tr();
       case 'ur.junagarhi':
-        return 'Urdu';
+        return 'urdu'.tr();
       case 'id.indonesian':
-        return 'Indonesian';
+        return 'indonesian'.tr();
       default:
         return settings.settings.translationLanguage;
     }
@@ -646,23 +653,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String _getTranslationLabel(String code) {
     switch (code) {
       case 'en.sahih':
-        return 'English (Sahih International)';
+        return 'english_sahih'.tr();
       case 'en.pickthall':
-        return 'English (Pickthall)';
+        return 'english_pickthall'.tr();
       case 'en.yusufali':
-        return 'English (Yusuf Ali)';
+        return 'english_yusufali'.tr();
       case 'en.shakir':
-        return 'English (Shakir)';
+        return 'english_shakir'.tr();
       case 'ar.ar':
-        return 'Arabic';
+        return 'arabic'.tr();
       case 'fr.hamidullah':
-        return 'French (Hamidullah)';
+        return 'french'.tr();
       case 'tr.diyanet':
-        return 'Turkish (Diyanet)';
+        return 'turkish'.tr();
       case 'ur.junagarhi':
-        return 'Urdu (Junagarhi)';
+        return 'urdu'.tr();
       case 'id.indonesian':
-        return 'Indonesian';
+        return 'indonesian'.tr();
       default:
         return code;
     }
@@ -731,13 +738,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   void _clearCache() async {
     await StorageService.clearAll();
+    if (!mounted) return;
     context.read<QuranProvider>().clearSurahsCache();
     context.read<AzkarProvider>().initialize();
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('cache_cleared'.tr())),
-      );
-    }
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('cache_cleared'.tr())),
+    );
   }
 
   void _resetAzkarProgress() {

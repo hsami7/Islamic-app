@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:flutter_compass/flutter_compass.dart';
 import '../../constants/app_design.dart';
 import '../../providers/qibla_provider.dart';
 import '../../providers/settings_provider.dart';
@@ -301,7 +300,7 @@ class _QiblaScreenState extends State<QiblaScreen>
                   ? '${provider.qiblaDirection!.latitude.toStringAsFixed(4)}°, ${provider.qiblaDirection!.longitude.toStringAsFixed(4)}°'
                   : '--',
               CupertinoIcons.map_pin,
-              IslamicColors.hadithPurple,
+              IslamicColors.qiblaOrange,
             ),
           ],
         ),

@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import '../models/prayer_times.dart';
-import '../models/user_settings.dart';
 import '../services/api_service.dart';
 import '../services/location_service.dart';
 import '../services/notification_service.dart';
 import '../services/storage_service.dart';
+import '../services/prayer_calculator.dart';
 import 'settings_provider.dart';
 
 class PrayerTimesProvider extends ChangeNotifier {
@@ -14,17 +14,20 @@ class PrayerTimesProvider extends ChangeNotifier {
   Map<String, PrayerTimes> _prayerTimesCache = {};
   bool _isLoading = false;
   String? _error;
+  bool _isOffline = false;
 
   // Location
   Position? _currentPosition;
   String _currentCity = '';
   String _currentCountry = '';
+  Map<String, double>? _lastLocation;
 
   // Getters
   PrayerTimes? get todayPrayerTimes => _todayPrayerTimes;
   PrayerTimes? get tomorrowPrayerTimes => _tomorrowPrayerTimes;
   bool get isLoading => _isLoading;
   String? get error => _error;
+  bool get isOffline => _isOffline;
   Position? get currentPosition => _currentPosition;
   String get currentCity => _currentCity;
   String get currentCountry => _currentCountry;
@@ -33,27 +36,24 @@ class PrayerTimesProvider extends ChangeNotifier {
   // Load prayer times for today
   Future<void> loadTodayPrayerTimes(SettingsProvider settings,
       {bool forceRefresh = false}) async {
-    if (_todayPrayerTimes != null && false) {
-      // Check if date changed
-      final today = DateTime.now();
-      final prayerDate = _todayPrayerTimes!.date;
-      if (prayerDate.year == today.year &&
-          prayerDate.month == today.month &&
-          prayerDate.day == today.day) {
-        return;
-      }
-    }
-
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
+      final cached = StorageService.getPrayerTimes(DateTime.now());
+      if (cached != null && !forceRefresh) {
+        _todayPrayerTimes = cached;
+        _isLoading = false;
+        notifyListeners();
+        return;
+      }
+
       await _loadPrayerTimesForDate(DateTime.now(), settings, isToday: true);
     } catch (e) {
       _error = e.toString();
-      // Try to load from cache
-      _todayPrayerTimes = StorageService.getPrayerTimes(DateTime.now());
+      _todayPrayerTimes = StorageService.getPrayerTimes(DateTime.now()) ??
+          _todayPrayerTimes;
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -66,56 +66,125 @@ class PrayerTimesProvider extends ChangeNotifier {
     SettingsProvider settings, {
     bool isToday = false,
   }) async {
-    // Try cache first
-    final cacheKey = '${date.year}-${date.month}-${date.day}';
-    if (_prayerTimesCache.containsKey(cacheKey) && false) {
-      if (isToday) _todayPrayerTimes = _prayerTimesCache[cacheKey];
-      return;
-    }
-
-    // Try local storage
     final cached = StorageService.getPrayerTimes(date);
-    if (cached != null && false) {
-      _prayerTimesCache[cacheKey] = cached;
+    if (cached != null && !cached.prayers.isEmpty) {
       if (isToday) _todayPrayerTimes = cached;
+      _prayerTimesCache[date.toIso8601String()] = cached;
+      _todayPrayerTimes = isToday ? cached : _todayPrayerTimes;
+      _tomorrowPrayerTimes = !isToday ? cached : _tomorrowPrayerTimes;
       notifyListeners();
       return;
     }
 
-    // Get location
-    final location = await _getLocation(settings);
-    _currentPosition = location['position'];
-    _currentCity = location['city'];
-    _currentCountry = location['country'];
+    try {
+      // Get location (falls back to Fez default internally)
+      final location = await _getLocation(settings);
+      _lastLocation = {
+        'latitude': location['latitude'] as double,
+        'longitude': location['longitude'] as double,
+      };
+      _currentPosition = location['position'];
+      _currentCity = location['city'];
+      _currentCountry = location['country'];
 
-    // Fetch from API
-    final prayerTimes = await apiService.getPrayerTimes(
-      latitude: location['latitude'],
-      longitude: location['longitude'],
-      method: settings.settings.calculationMethod,
-      school: settings.settings.madhab,
-      date: date,
-    );
+      // GUARANTEED baseline: compute locally on-device immediately so the
+      // screen is never empty, even if the API call below fails.
+      try {
+        final local = PrayerCalculator.calculate(
+          latitude: location['latitude'] as double,
+          longitude: location['longitude'] as double,
+          method: settings.settings.calculationMethod,
+          madhab: settings.settings.madhab,
+          date: date,
+          locale: settings.locale.languageCode,
+        );
+        _prayerTimesCache[date.toIso8601String()] = local;
+        if (isToday) {
+          _todayPrayerTimes = local;
+        } else {
+          _tomorrowPrayerTimes = local;
+        }
+        _isOffline = true;
+        _error = null;
+        notifyListeners();
+      } catch (_) {
+        // local calc failed (extremely unlikely) — continue to API attempt
+      }
 
-    // Cache it
-    _prayerTimesCache[cacheKey] = prayerTimes;
-    await StorageService.savePrayerTimes(prayerTimes);
-
-    if (isToday) {
-      _todayPrayerTimes = prayerTimes;
-    } else {
-      _tomorrowPrayerTimes = prayerTimes;
-    }
-
-    // Schedule notifications for today
-    if (isToday) {
-      await NotificationService.schedulePrayerNotifications(
-        prayerTimes,
-        settings.settings,
+      // Fetch from API (refines the baseline if reachable)
+      final prayerTimes = await apiService.getPrayerTimes(
+        latitude: location['latitude'],
+        longitude: location['longitude'],
+        method: settings.settings.calculationMethod,
+        school: settings.settings.madhab,
+        date: date,
       );
-    }
 
-    notifyListeners();
+      // Cache it
+      await StorageService.savePrayerTimes(prayerTimes);
+      _prayerTimesCache[date.toIso8601String()] = prayerTimes;
+
+      if (isToday) {
+        _todayPrayerTimes = prayerTimes;
+      } else {
+        _tomorrowPrayerTimes = prayerTimes;
+      }
+
+      // Schedule notifications for today
+      if (isToday) {
+        await NotificationService.schedulePrayerNotifications(
+          prayerTimes,
+          settings.settings,
+        );
+      }
+
+      _isOffline = false;
+      notifyListeners();
+    } catch (e) {
+      // Network/GPS/DNS failure. Do NOT hard-fail — compute locally.
+      try {
+        final loc = _lastLocation ??
+            {
+              'latitude': 34.0331,
+              'longitude': -5.0003,
+            };
+        final local = PrayerCalculator.calculate(
+          latitude: loc['latitude']!,
+          longitude: loc['longitude']!,
+          method: settings.settings.calculationMethod,
+          madhab: settings.settings.madhab,
+          date: date,
+          locale: settings.locale.languageCode,
+        );
+        await StorageService.savePrayerTimes(local);
+        _prayerTimesCache[date.toIso8601String()] = local;
+        if (isToday) {
+          _todayPrayerTimes = local;
+        } else {
+          _tomorrowPrayerTimes = local;
+        }
+        _isOffline = true;
+        _error = null;
+        notifyListeners();
+        return;
+      } catch (_) {
+        // Even local calc failed (e.g. no location at all) — fall back to cache.
+      }
+
+      // Fallback to cache on GPS/API failure
+      final fallback = StorageService.getPrayerTimes(date);
+      if (fallback != null && fallback.prayers.isNotEmpty) {
+        if (isToday) {
+          _todayPrayerTimes = fallback;
+        } else {
+          _tomorrowPrayerTimes = fallback;
+        }
+        _prayerTimesCache[date.toIso8601String()] = fallback;
+      } else {
+        _error = 'prayer_load_failed';
+      }
+      notifyListeners();
+    }
   }
 
   // Get location from settings or GPS

@@ -89,7 +89,7 @@ class UserSettings extends HiveObject {
   final DateTime? lastCompassCalibration;
 
   UserSettings({
-    this.language = 'en',
+    this.language = 'ar',
     this.isDarkMode = false,
     this.calculationMethod = 3, // Muslim World League
     this.madhab = 0, // Shafi
@@ -121,7 +121,7 @@ class UserSettings extends HiveObject {
 
   factory UserSettings.fromJson(Map<String, dynamic> json) {
     return UserSettings(
-      language: json['language'] ?? 'en',
+      language: json['language'] ?? 'ar',
       isDarkMode: json['isDarkMode'] ?? false,
       calculationMethod: json['calculationMethod'] ?? 3,
       madhab: json['madhab'] ?? 0,
@@ -256,7 +256,7 @@ class Bookmark extends HiveObject {
   final String id;
 
   @HiveField(1)
-  final String type; // 'quran', 'hadith', 'azkar'
+  final String type; // 'quran', 'azkar'
 
   @HiveField(2)
   final int surahNumber;
@@ -265,9 +265,6 @@ class Bookmark extends HiveObject {
   final int ayahNumber;
 
   @HiveField(4)
-  final String hadithId;
-
-  @HiveField(5)
   final String azkarId;
 
   @HiveField(6)
@@ -284,7 +281,6 @@ class Bookmark extends HiveObject {
     required this.type,
     this.surahNumber = 0,
     this.ayahNumber = 0,
-    this.hadithId = '',
     this.azkarId = '',
     this.note = '',
     required this.createdAt,
@@ -297,7 +293,6 @@ class Bookmark extends HiveObject {
       type: json['type'] ?? '',
       surahNumber: json['surahNumber'] ?? 0,
       ayahNumber: json['ayahNumber'] ?? 0,
-      hadithId: json['hadithId'] ?? '',
       azkarId: json['azkarId'] ?? '',
       note: json['note'] ?? '',
       createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : DateTime.now(),
@@ -311,7 +306,6 @@ class Bookmark extends HiveObject {
       'type': type,
       'surahNumber': surahNumber,
       'ayahNumber': ayahNumber,
-      'hadithId': hadithId,
       'azkarId': azkarId,
       'note': note,
       'createdAt': createdAt.toIso8601String(),

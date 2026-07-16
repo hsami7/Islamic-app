@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:intl/intl.dart';
+import '../../utils/numerals.dart';
 import '../../constants/app_design.dart';
 import '../../models/prayer_times.dart';
 import '../../providers/prayer_times_provider.dart';
@@ -52,6 +52,10 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen>
         controller: _scrollController,
         slivers: [
           _buildSliverAppBar(prayerProvider, settings),
+          if (prayerProvider.isOffline)
+            _buildOfflineNotice(prayerProvider, settings),
+          if (prayerProvider.error != null && prayerProvider.todayPrayerTimes == null)
+            _buildErrorCard(prayerProvider, settings),
           _buildNextPrayerCard(prayerProvider, settings),
           _buildTabBar(isDark),
           _buildTabBarView(prayerProvider, settings),
@@ -105,8 +109,10 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen>
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        DateFormat.yMMMMd(settings.locale.languageCode)
-                            .format(DateTime.now()),
+                        toLatinDigits(
+                          DateFormat.yMMMMd(settings.locale.languageCode)
+                              .format(DateTime.now()),
+                        ),
                         style: IslamicTextStyles.bodyMedium.copyWith(
                           color: IslamicColors.labelSecondary,
                         ),
@@ -160,7 +166,12 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen>
     final timeRemaining = provider.getTimeRemaining();
     final progress = provider.getProgressToNextPrayer();
 
+    // If prayer times failed entirely and we're showing the error card,
+    // don't also show a contradictory "Loading prayer times..." placeholder.
     if (nextPrayer == null) {
+      if (provider.error != null && provider.todayPrayerTimes == null) {
+        return const SliverToBoxAdapter(child: SizedBox.shrink());
+      }
       return SliverToBoxAdapter(
         child: Padding(
           padding: const EdgeInsets.all(IslamicSpacing.md),
@@ -169,7 +180,9 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen>
               padding: const EdgeInsets.all(IslamicSpacing.lg),
               child: Center(
                 child: Text(
-                  'loading_prayer_times'.tr(),
+                  provider.isLoading
+                      ? 'loading_prayer_times'.tr()
+                      : 'tap_to_refresh'.tr(),
                   style: IslamicTextStyles.bodyMedium,
                 ),
               ),
@@ -277,6 +290,97 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen>
     );
   }
 
+  Widget _buildOfflineNotice(PrayerTimesProvider provider, SettingsProvider settings) {
+    final isDark = settings.isDarkMode;
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: IslamicSpacing.md,
+          vertical: IslamicSpacing.xs,
+        ),
+        child: Container(
+          padding: const EdgeInsets.all(IslamicSpacing.md),
+          decoration: BoxDecoration(
+            color: isDark
+                ? IslamicColors.darkSecondaryGreen.withValues(alpha: 0.15)
+                : IslamicColors.secondaryGreen.withValues(alpha: 0.2),
+            borderRadius: BorderRadius.circular(IslamicRadius.lg),
+            border: Border.all(
+              color: IslamicColors.primaryGreen.withValues(alpha: 0.4),
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                CupertinoIcons.wifi_exclamationmark,
+                color: IslamicColors.primaryGreen,
+                size: 20,
+              ),
+              const SizedBox(width: IslamicSpacing.sm),
+              Expanded(
+                child: Text(
+                  'offline_prayer_times'.tr(),
+                  style: IslamicTextStyles.bodySmall.copyWith(
+                    color: isDark
+                        ? IslamicColors.darkLabelSecondary
+                        : IslamicColors.labelSecondary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorCard(PrayerTimesProvider provider, SettingsProvider settings) {
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.all(IslamicSpacing.md),
+        child: Card(
+          color: IslamicColors.azkarRed.withValues(alpha: 0.1),
+          child: Padding(
+            padding: const EdgeInsets.all(IslamicSpacing.lg),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  CupertinoIcons.exclamationmark_triangle,
+                  color: IslamicColors.azkarRed,
+                  size: 40,
+                ),
+                const SizedBox(height: IslamicSpacing.sm),
+                Text(
+                  'prayer_load_failed'.tr(),
+                  style: IslamicTextStyles.titleMedium.copyWith(
+                    color: IslamicColors.azkarRed,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: IslamicSpacing.md),
+                ElevatedButton.icon(
+                  onPressed: () => provider.refresh(
+                    context.read<SettingsProvider>(),
+                  ),
+                  icon: const Icon(CupertinoIcons.refresh),
+                  label: Text('retry'.tr()),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: IslamicColors.primaryGreen,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(IslamicRadius.pill),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildTabBar(bool isDark) {
     return SliverPersistentHeader(
       pinned: true,
@@ -321,7 +425,11 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen>
 
   Widget _buildTodayView(PrayerTimesProvider provider, SettingsProvider settings) {
     if (provider.todayPrayerTimes == null) {
-      return Center(child: Text('loading'.tr()));
+      return Center(
+        child: Text(
+          provider.isLoading ? 'loading'.tr() : 'tap_to_refresh'.tr(),
+        ),
+      );
     }
 
     final prayers = provider.todayPrayerTimes!.prayers;
@@ -387,7 +495,9 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen>
                       Text(
                         prayer.arabicName.tr(),
                         style: IslamicTextStyles.titleMedium.copyWith(
-                          color: IslamicColors.labelPrimary,
+                          color: settings.isDarkMode
+                              ? IslamicColors.darkLabelPrimary
+                              : IslamicColors.labelPrimary,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -551,15 +661,21 @@ class _PrayerTimesScreenState extends State<PrayerTimesScreen>
             Row(
               children: [
                 Text(
-                  DateFormat.EEEE(settings.locale.languageCode).format(day.date),
+                  toLatinDigits(
+                    DateFormat.EEEE(settings.locale.languageCode).format(day.date),
+                  ),
                   style: IslamicTextStyles.titleMedium.copyWith(
-                    color: IslamicColors.labelPrimary,
+                    color: settings.isDarkMode
+                        ? IslamicColors.darkLabelPrimary
+                        : IslamicColors.labelPrimary,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
                 const SizedBox(width: IslamicSpacing.sm),
                 Text(
-                  DateFormat.d(settings.locale.languageCode).format(day.date),
+                  toLatinDigits(
+                    DateFormat.d(settings.locale.languageCode).format(day.date),
+                  ),
                   style: IslamicTextStyles.bodyMedium.copyWith(
                     color: IslamicColors.labelSecondary,
                   ),

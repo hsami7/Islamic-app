@@ -4,7 +4,7 @@ publish_to: 'none'
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.12.2
+  sdk: ^3.5.4
 
 dependencies:
   flutter:
@@ -43,6 +43,8 @@ dependencies:
 
   # Quran text rendering
   flutter_html: ^3.0.0-beta.2
+  adhan: ^2.0.0+1
+  hijri: ^3.0.1
 
 dev_dependencies:
   flutter_test:

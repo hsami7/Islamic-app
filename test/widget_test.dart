@@ -7,13 +7,31 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
 
-import 'package:islamic_app/main.dart';
+import 'package:islamic_app/screens/main_screen.dart';
+import 'package:islamic_app/providers/index.dart';
 
 void main() {
   testWidgets('App loads without crashing', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const IslamicApp());
+    // Test the MainScreen with required providers (no Hive init needed)
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (_) => SettingsProvider()),
+          ChangeNotifierProvider(create: (_) => QuranProvider()),
+          ChangeNotifierProvider(create: (_) => PrayerTimesProvider()),
+          ChangeNotifierProvider(create: (_) => QiblaProvider()),
+          ChangeNotifierProvider(create: (_) => AzkarProvider()),
+        ],
+        child: const MaterialApp(
+          home: MainScreen(),
+        ),
+      ),
+    );
+
+    // Pump initial frame
+    await tester.pump();
 
     // Verify the app loads
     expect(find.byType(MaterialApp), findsOneWidget);

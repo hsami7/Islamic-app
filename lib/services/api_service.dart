@@ -3,14 +3,12 @@ import 'package:http/http.dart' as http;
 import '../models/surah.dart';
 import '../models/ayah.dart';
 import '../models/prayer_times.dart';
-import '../models/hadith.dart';
 import '../models/azkar.dart';
 import '../models/qibla.dart';
 
 class ApiService {
   static const String baseUrl = 'https://api.alquran.cloud/v1';
   static const String aladhanBaseUrl = 'https://api.aladhan.com/v1';
-  static const String sunnahBaseUrl = 'https://api.sunnah.com/v1';
 
   final http.Client _client = http.Client();
 
@@ -170,79 +168,6 @@ class ApiService {
       return QiblaDirection.fromJson(data['data']);
     }
     throw Exception('Failed to load qibla direction: ${response.statusCode}');
-  }
-
-  // Hadith API (Sunnah.com)
-  Future<List<HadithCollection>> getHadithCollections() async {
-    final response = await _client.get(
-      Uri.parse('$sunnahBaseUrl/collections'),
-      headers: {'Accept': 'application/json'},
-    );
-
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      final List<dynamic> collectionsJson = data['collections'] ?? [];
-      return collectionsJson.map((json) => HadithCollection.fromJson(json)).toList();
-    }
-    throw Exception('Failed to load hadith collections: ${response.statusCode}');
-  }
-
-  Future<HadithCollection> getHadithCollection(String collectionId,
-      {int page = 1, int limit = 50}) async {
-    final response = await _client.get(
-      Uri.parse('$sunnahBaseUrl/collections/$collectionId/hadiths').replace(queryParameters: {
-        'page': page.toString(),
-        'limit': limit.toString(),
-      }),
-      headers: {'Accept': 'application/json'},
-    );
-
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      return HadithCollection.fromJson(data);
-    }
-    throw Exception('Failed to load hadith collection: ${response.statusCode}');
-  }
-
-  Future<Hadith> getHadith(String collectionId, String hadithId) async {
-    final response = await _client.get(
-      Uri.parse('$sunnahBaseUrl/collections/$collectionId/hadiths/$hadithId'),
-      headers: {'Accept': 'application/json'},
-    );
-
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      return Hadith.fromJson(data['hadith']);
-    }
-    throw Exception('Failed to load hadith: ${response.statusCode}');
-  }
-
-  Future<List<Hadith>> searchHadith({
-    required String query,
-    String? collectionId,
-    int page = 1,
-    int limit = 20,
-  }) async {
-    final params = <String, String>{
-      'q': query,
-      'page': page.toString(),
-      'limit': limit.toString(),
-    };
-    if (collectionId != null) {
-      params['collection'] = collectionId;
-    }
-
-    final response = await _client.get(
-      Uri.parse('$sunnahBaseUrl/hadiths/search').replace(queryParameters: params),
-      headers: {'Accept': 'application/json'},
-    );
-
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      final List<dynamic> hadithsJson = data['hadiths'] ?? [];
-      return hadithsJson.map((json) => Hadith.fromJson(json)).toList();
-    }
-    throw Exception('Failed to search hadith: ${response.statusCode}');
   }
 
   // Azkar - using local JSON for now, can be moved to API

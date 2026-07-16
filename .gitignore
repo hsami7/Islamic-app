@@ -1,13 +1,15 @@
-# Flutter/Dart
-.dart_tool/
-.pub-cache/
-.pub/
+# Build outputs
 build/
-coverage/
-*.iml
+.dart_tool/
+*.apk
+*.aab
+android/app/release-keystore.jks
+
+# Local junk / OS
+.DS_Store
+*.tmp
+test_tmp/
+
+# Editor
 .idea/
-android/.gradle
-android/local.properties
-android/key.properties
-ios/.generated/
-ios/Flutter/.last_build_id
+.vscode/

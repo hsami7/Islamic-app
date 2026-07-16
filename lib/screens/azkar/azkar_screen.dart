@@ -197,7 +197,9 @@ class _AzkarScreenState extends State<AzkarScreen>
                           ? category.nameArabic
                           : category.name,
                       style: IslamicTextStyles.titleMedium.copyWith(
-                        color: IslamicColors.labelPrimary,
+                        color: settings.isDarkMode
+                            ? IslamicColors.darkLabelPrimary
+                            : IslamicColors.labelPrimary,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -207,7 +209,9 @@ class _AzkarScreenState extends State<AzkarScreen>
                           ? category.descriptionArabic
                           : category.description,
                       style: IslamicTextStyles.bodySmall.copyWith(
-                        color: IslamicColors.labelTertiary,
+                        color: settings.isDarkMode
+                            ? IslamicColors.darkLabelSecondary
+                            : IslamicColors.labelSecondary,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -292,11 +296,10 @@ class _AzkarScreenState extends State<AzkarScreen>
                 children: [
                   Expanded(
                     child: Text(
-                      settings.locale.languageCode == 'ar'
-                          ? azkar.textArabic
-                          : azkar.text,
+                      settings.locale.languageCode == 'ar' ? azkar.textArabic : azkar.text,
                       style: IslamicTextStyles.bodyMedium.copyWith(
                         fontFamily: settings.locale.languageCode == 'ar' ? 'Amiri' : 'SF Pro',
+                        color: settings.isDarkMode ? IslamicColors.darkLabelPrimary : IslamicColors.labelPrimary,
                         height: 1.6,
                       ),
                       textDirection: settings.locale.languageCode == 'ar'
@@ -411,7 +414,9 @@ class _CategoryAzkarSheet extends StatelessWidget {
               children: [
                 Text(
                   settings.locale.languageCode == 'ar' ? category.nameArabic : category.name,
-                  style: IslamicTextStyles.titleLarge,
+                  style: IslamicTextStyles.titleLarge.copyWith(
+                    color: isDark ? IslamicColors.darkLabelPrimary : IslamicColors.labelPrimary,
+                  ),
                 ),
                 const Spacer(),
                 IconButton(
@@ -463,6 +468,7 @@ class _AzkarListItem extends StatelessWidget {
                 settings.locale.languageCode == 'ar' ? azkar.textArabic : azkar.text,
                 style: IslamicTextStyles.bodyMedium.copyWith(
                   fontFamily: settings.locale.languageCode == 'ar' ? 'Amiri' : 'SF Pro',
+                  color: settings.isDarkMode ? IslamicColors.darkLabelPrimary : IslamicColors.labelPrimary,
                   height: 1.6,
                 ),
                 textDirection: settings.locale.languageCode == 'ar'
@@ -566,161 +572,163 @@ class _AzkarCounterSheetState extends State<_AzkarCounterSheet>
     final progress = _count / widget.azkar.count;
 
     return Container(
-      height: MediaQuery.of(context).size.height * 0.7,
       decoration: BoxDecoration(
         color: isDark ? IslamicColors.darkSystemBackground : IslamicColors.systemBackground,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(IslamicRadius.xl)),
       ),
-      child: Column(
-        children: [
-          Container(
-            width: 40,
-            height: 4,
-            margin: const EdgeInsets.only(top: 12),
-            decoration: BoxDecoration(
-              color: IslamicColors.separator,
-              borderRadius: BorderRadius.circular(2),
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.85,
+      ),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(IslamicSpacing.lg),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: IslamicSpacing.lg),
+              decoration: BoxDecoration(
+                color: IslamicColors.separator,
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(IslamicSpacing.lg),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+            // Progress ring
+            SizedBox(
+              width: 200,
+              height: 200,
+              child: Stack(
+                alignment: Alignment.center,
                 children: [
-                  // Progress ring
-                  SizedBox(
-                    width: 200,
-                    height: 200,
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        CircularProgressIndicator(
-                          value: progress,
-                          strokeWidth: 12,
-                          backgroundColor: IslamicColors.separator.withValues(alpha: 0.2),
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            _count >= widget.azkar.count
-                                ? IslamicColors.primaryGreen
-                                : IslamicColors.azkarRed,
-                          ),
-                        ),
-                        Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            AnimatedBuilder(
-                              animation: _animationController,
-                              builder: (context, child) {
-                                return Transform.scale(
-                                  scale: 1.0 + (_animationController.value * 0.2),
-                                  child: Text(
-                                    '$_count',
-                                    style: IslamicTextStyles.displayLarge.copyWith(
-                                      fontSize: 72,
-                                      fontWeight: FontWeight.w300,
-                                      color: _count >= widget.azkar.count
-                                          ? IslamicColors.primaryGreen
-                                          : IslamicColors.labelPrimary,
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                            Text(
-                              '/${widget.azkar.count}',
-                              style: IslamicTextStyles.headlineSmall.copyWith(
-                                color: IslamicColors.labelTertiary,
+                  CircularProgressIndicator(
+                    value: progress,
+                    strokeWidth: 12,
+                    backgroundColor: IslamicColors.separator.withValues(alpha: 0.2),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      _count >= widget.azkar.count
+                          ? IslamicColors.primaryGreen
+                          : IslamicColors.azkarRed,
+                    ),
+                  ),
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      AnimatedBuilder(
+                        animation: _animationController,
+                        builder: (context, child) {
+                          return Transform.scale(
+                            scale: 1.0 + (_animationController.value * 0.2),
+                            child: Text(
+                              '$_count',
+                              style: IslamicTextStyles.displayLarge.copyWith(
+                                fontSize: 72,
+                                fontWeight: FontWeight.w300,
+                                color: _count >= widget.azkar.count
+                                    ? IslamicColors.primaryGreen
+                                    : (isDark
+                                        ? IslamicColors.darkLabelPrimary
+                                        : IslamicColors.labelPrimary),
                               ),
                             ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: IslamicSpacing.xl),
-                  // Azkar text
-                  Text(
-                    settings.locale.languageCode == 'ar'
-                        ? widget.azkar.textArabic
-                        : widget.azkar.text,
-                    style: IslamicTextStyles.arabicLarge.copyWith(
-                      fontSize: 24,
-                      color: IslamicColors.labelPrimary,
-                    ),
-                    textDirection: ui.TextDirection.rtl,
-                    textAlign: TextAlign.center,
-                  ),
-                  if (widget.azkar.translation.isNotEmpty) ...[
-                    const SizedBox(height: IslamicSpacing.md),
-                    Text(
-                      widget.azkar.translation,
-                      style: IslamicTextStyles.bodyMedium.copyWith(
-                        color: IslamicColors.labelSecondary,
+                          );
+                        },
                       ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                  const SizedBox(height: IslamicSpacing.xl),
-                  // Controls
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      IconButton.filled(
-                        onPressed: _decrement,
-                        icon: const Icon(CupertinoIcons.minus),
-                        style: IconButton.styleFrom(
-                          backgroundColor: IslamicColors.separator.withValues(alpha: 0.2),
-                        ),
-                      ),
-                      const SizedBox(width: IslamicSpacing.lg),
-                      IconButton.filled(
-                        onPressed: _increment,
-                        icon: const Icon(CupertinoIcons.plus),
-                        style: IconButton.styleFrom(
-                          backgroundColor: IslamicColors.azkarRed,
-                          padding: const EdgeInsets.all(IslamicSpacing.lg),
-                        ),
-                      ),
-                      const SizedBox(width: IslamicSpacing.lg),
-                      IconButton.filled(
-                        onPressed: _reset,
-                        icon: const Icon(CupertinoIcons.arrow_counterclockwise),
-                        style: IconButton.styleFrom(
-                          backgroundColor: IslamicColors.separator.withValues(alpha: 0.2),
+                      Text(
+                        '/${widget.azkar.count}',
+                        style: IslamicTextStyles.headlineSmall.copyWith(
+                          color: isDark
+                              ? IslamicColors.darkLabelTertiary
+                              : IslamicColors.labelTertiary,
                         ),
                       ),
                     ],
                   ),
-                  if (_count >= widget.azkar.count) ...[
-                    const SizedBox(height: IslamicSpacing.lg),
-                    Container(
-                      padding: const EdgeInsets.all(IslamicSpacing.md),
-                      decoration: BoxDecoration(
-                        color: IslamicColors.primaryGreen.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(IslamicRadius.md),
-                        border: Border.all(color: IslamicColors.primaryGreen.withValues(alpha: 0.3)),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(CupertinoIcons.checkmark_seal_fill, color: IslamicColors.primaryGreen),
-                          const SizedBox(width: IslamicSpacing.sm),
-                          Text(
-                            'azkar_completed'.tr(),
-                            style: IslamicTextStyles.titleMedium.copyWith(
-                              color: IslamicColors.primaryGreenDark,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
                 ],
               ),
             ),
-          ),
-        ],
+            const SizedBox(height: IslamicSpacing.xl),
+            // Azkar text
+            Text(
+              settings.locale.languageCode == 'ar'
+                  ? widget.azkar.textArabic
+                  : widget.azkar.text,
+              style: IslamicTextStyles.arabicLarge.copyWith(
+                fontSize: 24,
+                color: isDark
+                    ? IslamicColors.darkLabelPrimary
+                    : IslamicColors.labelPrimary,
+              ),
+              textDirection: ui.TextDirection.rtl,
+              textAlign: TextAlign.center,
+            ),
+            if (widget.azkar.translation.isNotEmpty) ...[
+              const SizedBox(height: IslamicSpacing.md),
+              Text(
+                widget.azkar.translation,
+                style: IslamicTextStyles.bodyMedium.copyWith(
+                  color: IslamicColors.labelSecondary,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+            const SizedBox(height: IslamicSpacing.xl),
+            // Controls
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                IconButton.filled(
+                  onPressed: _decrement,
+                  icon: const Icon(CupertinoIcons.minus),
+                  style: IconButton.styleFrom(
+                    backgroundColor: IslamicColors.separator.withValues(alpha: 0.2),
+                  ),
+                ),
+                const SizedBox(width: IslamicSpacing.lg),
+                IconButton.filled(
+                  onPressed: _increment,
+                  icon: const Icon(CupertinoIcons.plus),
+                  style: IconButton.styleFrom(
+                    backgroundColor: IslamicColors.azkarRed,
+                    padding: const EdgeInsets.all(IslamicSpacing.lg),
+                  ),
+                ),
+                const SizedBox(width: IslamicSpacing.lg),
+                IconButton.filled(
+                  onPressed: _reset,
+                  icon: const Icon(CupertinoIcons.arrow_counterclockwise),
+                  style: IconButton.styleFrom(
+                    backgroundColor: IslamicColors.separator.withValues(alpha: 0.2),
+                  ),
+                ),
+              ],
+            ),
+            if (_count >= widget.azkar.count) ...[
+              const SizedBox(height: IslamicSpacing.lg),
+              Container(
+                padding: const EdgeInsets.all(IslamicSpacing.md),
+                decoration: BoxDecoration(
+                  color: IslamicColors.primaryGreen.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(IslamicRadius.md),
+                  border: Border.all(color: IslamicColors.primaryGreen.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(CupertinoIcons.checkmark_seal_fill, color: IslamicColors.primaryGreen),
+                    const SizedBox(width: IslamicSpacing.sm),
+                    Text(
+                      'azkar_completed'.tr(),
+                      style: IslamicTextStyles.titleMedium.copyWith(
+                        color: IslamicColors.primaryGreenDark,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }

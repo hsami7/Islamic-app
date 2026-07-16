@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_compass/flutter_compass.dart';
-import 'package:geolocator/geolocator.dart';
+import 'dart:async';
 import '../models/qibla.dart';
-import '../models/user_settings.dart';
 import '../services/api_service.dart';
 import '../services/location_service.dart';
 import '../services/storage_service.dart';
@@ -15,7 +14,7 @@ class QiblaProvider extends ChangeNotifier {
   bool _isLoading = false;
   String? _error;
   bool _isCalibrating = false;
-  Stream<double>? _compassStream;
+  StreamSubscription<dynamic>? _compassSubscription;
 
   // Getters
   QiblaDirection? get qiblaDirection => _qiblaDirection;

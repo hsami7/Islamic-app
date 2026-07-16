@@ -5,6 +5,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:provider/provider.dart';
 
 import 'constants/app_theme.dart';
+import 'utils/numerals.dart';
 import 'providers/index.dart';
 import 'services/storage_service.dart';
 import 'services/notification_service.dart';
@@ -19,6 +20,9 @@ void main() async {
   // Initialize Easy Localization
   await EasyLocalization.ensureInitialized();
 
+  // Force Latin (0-9) digits everywhere, even in the Arabic locale
+  forceLatinDigitsForArabic();
+
   // Initialize notifications
   await NotificationService.initialize();
 
@@ -26,7 +30,8 @@ void main() async {
     EasyLocalization(
       supportedLocales: const [Locale('en'), Locale('ar')],
       path: 'assets/lang',
-      fallbackLocale: const Locale('en'),
+      fallbackLocale: const Locale('ar'),
+      startLocale: const Locale('ar'),
       saveLocale: true,
       child: const IslamicApp(),
     ),
@@ -44,7 +49,6 @@ class IslamicApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => QuranProvider()),
         ChangeNotifierProvider(create: (_) => PrayerTimesProvider()),
         ChangeNotifierProvider(create: (_) => QiblaProvider()),
-        ChangeNotifierProvider(create: (_) => HadithProvider()),
         ChangeNotifierProvider(create: (_) => AzkarProvider()..initialize()),
       ],
       child: Consumer<SettingsProvider>(

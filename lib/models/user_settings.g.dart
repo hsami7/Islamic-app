@@ -136,18 +136,17 @@ class BookmarkAdapter extends TypeAdapter<Bookmark> {
       type: fields[1] as String,
       surahNumber: fields[2] as int,
       ayahNumber: fields[3] as int,
-      hadithId: fields[4] as String,
-      azkarId: fields[5] as String,
-      note: fields[6] as String,
-      createdAt: fields[7] as DateTime,
-      metadata: (fields[8] as Map).cast<String, dynamic>(),
+      azkarId: fields[4] as String,
+      note: fields[5] as String,
+      createdAt: fields[6] as DateTime,
+      metadata: (fields[7] as Map).cast<String, dynamic>(),
     );
   }
 
   @override
   void write(BinaryWriter writer, Bookmark obj) {
     writer
-      ..writeByte(9)
+      ..writeByte(8)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -157,14 +156,12 @@ class BookmarkAdapter extends TypeAdapter<Bookmark> {
       ..writeByte(3)
       ..write(obj.ayahNumber)
       ..writeByte(4)
-      ..write(obj.hadithId)
-      ..writeByte(5)
       ..write(obj.azkarId)
-      ..writeByte(6)
+      ..writeByte(5)
       ..write(obj.note)
-      ..writeByte(7)
+      ..writeByte(6)
       ..write(obj.createdAt)
-      ..writeByte(8)
+      ..writeByte(7)
       ..write(obj.metadata);
   }
 

@@ -6,11 +6,12 @@ import 'package:provider/provider.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:audioplayers/audioplayers.dart';
 import '../../constants/app_design.dart';
+import '../../theme/islamic_theme.dart';
 import '../../models/surah.dart';
 import '../../models/ayah.dart';
-import '../../models/user_settings.dart';
 import '../../providers/quran_provider.dart';
 import '../../providers/settings_provider.dart';
+import '../../services/storage_service.dart';
 
 class QuranScreen extends StatefulWidget {
   const QuranScreen({super.key});
@@ -20,10 +21,6 @@ class QuranScreen extends StatefulWidget {
 }
 
 class _QuranScreenState extends State<QuranScreen> {
-  final AudioPlayer _audioPlayer = AudioPlayer();
-  int? _playingSurah;
-  int? _playingAyah;
-  bool _isPlaying = false;
   final ScrollController _scrollController = ScrollController();
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
@@ -31,38 +28,9 @@ class _QuranScreenState extends State<QuranScreen> {
 
   @override
   void dispose() {
-    _audioPlayer.dispose();
     _scrollController.dispose();
     _searchController.dispose();
     super.dispose();
-  }
-
-  Future<void> _playAyah(Surah surah, Ayah ayah) async {
-    if (_isPlaying && _playingSurah == surah.number && _playingAyah == ayah.numberInSurah) {
-      await _audioPlayer.pause();
-      setState(() => _isPlaying = false);
-      return;
-    }
-
-    try {
-      await _audioPlayer.play(UrlSource(ayah.audioUrl));
-      setState(() {
-        _isPlaying = true;
-        _playingSurah = surah.number;
-        _playingAyah = ayah.numberInSurah;
-      });
-    } catch (e) {
-      // Handle error silently
-    }
-  }
-
-  void _stopAudio() {
-    _audioPlayer.stop();
-    setState(() {
-      _isPlaying = false;
-      _playingSurah = null;
-      _playingAyah = null;
-    });
   }
 
   @override
@@ -100,10 +68,7 @@ class _QuranScreenState extends State<QuranScreen> {
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       surfaceTintColor: Colors.transparent,
       flexibleSpace: FlexibleSpaceBar(
-        title: Text(
-          'quran'.tr(),
-          style: IslamicTextStyles.titleLarge,
-        ),
+        title: Text('quran'.tr(), style: IslamicTextStyles.titleLarge),
         centerTitle: true,
         background: Container(
           decoration: BoxDecoration(
@@ -116,12 +81,6 @@ class _QuranScreenState extends State<QuranScreen> {
               ],
             ),
           ),
-          child: _isPlaying
-              ? Padding(
-                  padding: const EdgeInsets.all(IslamicSpacing.md),
-                  child: _buildMiniPlayer(),
-                )
-              : null,
         ),
       ),
       actions: [
@@ -134,41 +93,6 @@ class _QuranScreenState extends State<QuranScreen> {
           onPressed: () => _showBookmarks(),
         ),
       ],
-    );
-  }
-
-  Widget _buildMiniPlayer() {
-    return Container(
-      padding: const EdgeInsets.all(IslamicSpacing.md),
-      decoration: BoxDecoration(
-        color: IslamicColors.primaryGreen.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(IslamicRadius.md),
-        border: Border.all(color: IslamicColors.primaryGreen.withValues(alpha: 0.3)),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            _isPlaying ? CupertinoIcons.pause_fill : CupertinoIcons.play_fill,
-            color: IslamicColors.primaryGreen,
-          ),
-          const SizedBox(width: IslamicSpacing.sm),
-          Expanded(
-            child: Text(
-              'playing_ayah'.tr(args: [(_playingSurah ?? 0).toString(), (_playingAyah ?? 0).toString()]),
-              style: IslamicTextStyles.bodySmall.copyWith(
-                color: IslamicColors.primaryGreenDark,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          IconButton(
-            icon: const Icon(CupertinoIcons.stop_fill, size: 20),
-            color: IslamicColors.primaryGreen,
-            onPressed: _stopAudio,
-          ),
-        ],
-      ),
     );
   }
 
@@ -279,12 +203,14 @@ class _QuranScreenState extends State<QuranScreen> {
   Widget _buildSurahCard(Surah surah, QuranProvider provider, bool isArabic) {
     final isBookmarked = provider.quranBookmarks
         .any((b) => b.surahNumber == surah.number && b.ayahNumber == 0);
+    final theme = IslamicTheme.of(context);
 
     return Card(
       margin: const EdgeInsets.symmetric(
         horizontal: IslamicSpacing.md,
         vertical: IslamicSpacing.xs,
       ),
+      color: theme.card,
       child: InkWell(
         onTap: () => _showSurahDetail(surah, provider),
         borderRadius: BorderRadius.circular(IslamicRadius.lg),
@@ -327,7 +253,7 @@ class _QuranScreenState extends State<QuranScreen> {
                       surah.name,
                       style: IslamicTextStyles.arabicMedium.copyWith(
                         fontSize: 22,
-                        color: IslamicColors.labelPrimary,
+                        color: theme.textPrimary,
                       ),
                       textDirection: ui.TextDirection.rtl,
                     ),
@@ -336,7 +262,7 @@ class _QuranScreenState extends State<QuranScreen> {
                     Text(
                       surah.englishName,
                       style: IslamicTextStyles.bodyMedium.copyWith(
-                        color: IslamicColors.labelSecondary,
+                        color: theme.textSecondary,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -344,7 +270,7 @@ class _QuranScreenState extends State<QuranScreen> {
                     Text(
                       surah.englishNameTranslation,
                       style: IslamicTextStyles.bodySmall.copyWith(
-                        color: IslamicColors.labelTertiary,
+                        color: theme.textTertiary,
                       ),
                     ),
                   ],
@@ -509,12 +435,44 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
   String? _error;
   int? _playingAyah;
   final ScrollController _scrollController = ScrollController();
+  int _currentIndex = 0;
 
   @override
   void initState() {
     super.initState();
     _loadAyahs();
+    _scrollController.addListener(_onScroll);
   }
+
+  void _onScroll() {
+    if (_ayahs.isEmpty) return;
+    // Approximate the centered ayah index from scroll offset + viewport.
+    final offset = _scrollController.offset + 200; // bias toward center
+    const itemApprox = 160.0; // avg ayah card height
+    final idx = (offset / itemApprox).floor().clamp(0, _ayahs.length - 1);
+    final ayahNo = _ayahs[idx].numberInSurah;
+    _currentIndex = idx;
+    if (ayahNo != _lastRecorded) {
+      _lastRecorded = ayahNo;
+      StorageService.saveReadingProgress(widget.surah.number, ayahNo);
+    }
+  }
+
+  void _goToAyah(int index) {
+    if (_ayahs.isEmpty) return;
+    final target = index.clamp(0, _ayahs.length - 1);
+    if (target == _currentIndex) return;
+    setState(() => _currentIndex = target);
+    // Average ayah card height including padding (~200px).
+    const itemHeight = 200.0;
+    _scrollController.animateTo(
+      target * itemHeight,
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeInOutCubic,
+    );
+  }
+
+  int _lastRecorded = 0;
 
   @override
   void dispose() {
@@ -537,6 +495,8 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
   }
 
   Future<void> _playAyah(Ayah ayah) async {
+    // Record progress when the user listens to an ayah.
+    StorageService.saveReadingProgress(widget.surah.number, ayah.numberInSurah);
     if (_playingAyah == ayah.numberInSurah) {
       await _audioPlayer.pause();
       setState(() => _playingAyah = null);
@@ -555,34 +515,57 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsProvider>();
     final isArabic = settings.locale.languageCode == 'ar';
-    // ... rest of the implementation will be similar but for ayahs
 
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.surah.name, style: IslamicTextStyles.arabicMedium),
         centerTitle: true,
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-              ? Center(child: Text(_error!))
-              : ListView.builder(
-                  controller: _scrollController,
-                  padding: const EdgeInsets.all(IslamicSpacing.md),
-                  itemCount: _ayahs.length,
-                  itemBuilder: (context, index) {
-                    final ayah = _ayahs[index];
-                    return _buildAyahItem(ayah, isArabic, settings);
-                  },
+      body: Stack(
+        children: [
+          _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : _error != null
+                  ? Center(child: Text(_error!))
+                  : ListView.builder(
+                      controller: _scrollController,
+                      padding: const EdgeInsets.all(IslamicSpacing.md),
+                      itemCount: _ayahs.length,
+                      itemBuilder: (context, index) {
+                        final ayah = _ayahs[index];
+                        return _buildAyahItem(ayah, isArabic, settings);
+                      },
+                    ),
+          // Tap zones: left = next ayah, right = previous ayah.
+          if (!_isLoading && _error == null)
+            Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => _goToAyah(_currentIndex + 1),
+                    behavior: HitTestBehavior.translucent,
+                  ),
                 ),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => _goToAyah(_currentIndex - 1),
+                    behavior: HitTestBehavior.translucent,
+                  ),
+                ),
+              ],
+            ),
+        ],
+      ),
     );
   }
 
   Widget _buildAyahItem(Ayah ayah, bool isArabic, SettingsProvider settings) {
     final isPlaying = _playingAyah == ayah.numberInSurah;
+    final theme = IslamicTheme.of(context);
 
     return Card(
       margin: const EdgeInsets.only(bottom: IslamicSpacing.md),
+      color: theme.card,
       child: Padding(
         padding: const EdgeInsets.all(IslamicSpacing.md),
         child: Column(
@@ -611,13 +594,13 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
                 IconButton(
                   icon: Icon(
                     isPlaying ? CupertinoIcons.pause_fill : CupertinoIcons.play_fill,
-                    color: IslamicColors.primaryGreen,
+                    color: theme.accent,
                   ),
                   onPressed: () => _playAyah(ayah),
                 ),
                 IconButton(
                   icon: const Icon(CupertinoIcons.bookmark),
-                  color: IslamicColors.labelTertiary,
+                  color: theme.textTertiary,
                   onPressed: () => _toggleBookmark(ayah),
                 ),
               ],
@@ -629,7 +612,7 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
               ayah.textArabic,
               style: IslamicTextStyles.quranAyah.copyWith(
                 fontSize: settings.settings.quranFontSize,
-                color: IslamicColors.labelPrimary,
+                color: theme.textPrimary,
               ),
               textDirection: ui.TextDirection.rtl,
               textAlign: TextAlign.center,
@@ -638,12 +621,12 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
             // Translation
             if (settings.settings.showTranslation && ayah.translation.isNotEmpty) ...[
               const SizedBox(height: IslamicSpacing.md),
-              Divider(color: IslamicColors.separator),
+              Divider(color: theme.separator),
               const SizedBox(height: IslamicSpacing.sm),
               Text(
                 ayah.translation,
                 style: IslamicTextStyles.quranTranslation.copyWith(
-                  color: IslamicColors.labelSecondary,
+                  color: theme.textSecondary,
                 ),
                 textDirection: isArabic ? ui.TextDirection.rtl : ui.TextDirection.ltr,
                 textAlign: isArabic ? TextAlign.right : TextAlign.left,

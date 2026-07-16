@@ -68,8 +68,11 @@ class QuranProvider extends ChangeNotifier {
     try {
       // Try local first
       final localAyahs = StorageService.getSurahAyahs(surahNumber);
+      // Stale-cache guard: older builds cached ayahs without Arabic text.
+      // If any cached ayah is missing its Arabic, treat the cache as stale.
+      final cacheStale = localAyahs.any((a) => a.textArabic.trim().isEmpty);
       List<Ayah> ayahs;
-      if (localAyahs.isNotEmpty && !forceRefresh) {
+      if (localAyahs.isNotEmpty && !forceRefresh && !cacheStale) {
         ayahs = localAyahs;
       } else {
         // Fetch from API
