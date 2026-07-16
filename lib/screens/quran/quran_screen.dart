@@ -1,12 +1,14 @@
-import 'package:flutter/material.dart';
 import 'dart:ui' as ui;
 
+import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:audioplayers/audioplayers.dart';
+
 import '../../constants/app_design.dart';
 import '../../theme/islamic_theme.dart';
+import '../../widgets/hig.dart';
 import '../../models/surah.dart';
 import '../../models/ayah.dart';
 import '../../providers/quran_provider.dart';
@@ -38,107 +40,85 @@ class _QuranScreenState extends State<QuranScreen> {
     final settings = context.watch<SettingsProvider>();
     final quranProvider = context.watch<QuranProvider>();
     final isArabic = settings.locale.languageCode == 'ar';
+    final theme = IslamicTheme.of(context);
 
-    return Scaffold(
-      backgroundColor: settings.isDarkMode
-          ? IslamicColors.darkSystemGroupedBackground
-          : IslamicColors.systemGroupedBackground,
-      body: CustomScrollView(
-        controller: _scrollController,
-        slivers: [
-          _buildSliverAppBar(isArabic),
-          _buildSearchBar(isArabic),
-          if (quranProvider.isLoadingSurahs)
-            _buildLoadingState()
-          else if (quranProvider.surahsError != null)
-            _buildErrorState(quranProvider.surahsError!, quranProvider)
-          else
-            _buildSurahList(quranProvider, isArabic),
-        ],
-      ),
+    return HIGScaffold(
+      title: 'quran',
+      onRefresh: () => quranProvider.loadSurahs(forceRefresh: true),
+      slivers: [
+        _buildActions(theme),
+        if (_showSearch) _buildSearchBar(isArabic),
+        if (quranProvider.isLoadingSurahs)
+          _buildLoadingState()
+        else if (quranProvider.surahsError != null)
+          _buildErrorState(quranProvider.surahsError!, quranProvider)
+        else
+          _buildSurahList(quranProvider, isArabic, theme),
+      ],
     );
   }
 
-  Widget _buildSliverAppBar(bool isArabic) {
-    return SliverAppBar(
-      expandedHeight: 120,
-      floating: true,
-      snap: true,
-      pinned: true,
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      surfaceTintColor: Colors.transparent,
-      flexibleSpace: FlexibleSpaceBar(
-        title: Text('quran'.tr(), style: IslamicTextStyles.titleLarge),
-        centerTitle: true,
-        background: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                IslamicColors.primaryGreen.withValues(alpha: 0.1),
-                IslamicColors.secondaryGreen.withValues(alpha: 0.05),
-              ],
+  Widget _buildActions(IslamicTheme theme) {
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: kHIGMargin,
+          vertical: IslamicSpacing.xs,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            CupertinoButton(
+              padding: EdgeInsets.zero,
+              onPressed: () => setState(() => _showSearch = !_showSearch),
+              child: Icon(
+                CupertinoIcons.search,
+                color: theme.accent,
+              ),
             ),
-          ),
+            CupertinoButton(
+              padding: EdgeInsets.zero,
+              onPressed: () => _showBookmarks(),
+              child: Icon(
+                CupertinoIcons.bookmark_fill,
+                color: theme.accent,
+              ),
+            ),
+          ],
         ),
       ),
-      actions: [
-        IconButton(
-          icon: const Icon(CupertinoIcons.search),
-          onPressed: () => setState(() => _showSearch = true),
-        ),
-        IconButton(
-          icon: const Icon(CupertinoIcons.bookmark_fill),
-          onPressed: () => _showBookmarks(),
-        ),
-      ],
     );
   }
 
   Widget _buildSearchBar(bool isArabic) {
     return SliverToBoxAdapter(
-      child: AnimatedContainer(
-        duration: IslamicDurations.fast,
-        height: _showSearch ? 56 : 0,
-        child: _showSearch
-            ? Padding(
-                padding: const EdgeInsets.all(IslamicSpacing.md),
-                child: TextField(
-                  controller: _searchController,
-                  autofocus: true,
-                  decoration: InputDecoration(
-                    hintText: 'search_quran'.tr(),
-                    prefixIcon: const Icon(CupertinoIcons.search),
-                    suffixIcon: IconButton(
-                      icon: const Icon(CupertinoIcons.clear),
-                      onPressed: () {
-                        _searchController.clear();
-                        setState(() {
-                          _showSearch = false;
-                          _searchQuery = '';
-                        });
-                      },
-                    ),
-                  ),
-                  onChanged: (value) {
-                    setState(() => _searchQuery = value);
-                  },
-                  textDirection: isArabic ? ui.TextDirection.rtl : ui.TextDirection.ltr,
-                ),
-              )
-            : const SizedBox.shrink(),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: kHIGMargin,
+          vertical: IslamicSpacing.xs,
+        ),
+        child: CupertinoSearchTextField(
+          controller: _searchController,
+          autofocus: true,
+          placeholder: 'search_quran'.tr(),
+          onChanged: (value) => setState(() => _searchQuery = value),
+          onSuffixTap: () {
+            _searchController.clear();
+            setState(() => _searchQuery = '');
+          },
+        ),
       ),
     );
   }
 
   Widget _buildLoadingState() {
+    final theme = IslamicTheme.of(context);
     return SliverFillRemaining(
       child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            CircularProgressIndicator(color: IslamicColors.primaryGreen),
+            CupertinoActivityIndicator(color: theme.accent),
             const SizedBox(height: IslamicSpacing.md),
             Text('loading'.tr(), style: IslamicTextStyles.bodyMedium),
           ],
@@ -148,6 +128,7 @@ class _QuranScreenState extends State<QuranScreen> {
   }
 
   Widget _buildErrorState(String error, QuranProvider provider) {
+    final theme = IslamicTheme.of(context);
     return SliverFillRemaining(
       child: Center(
         child: Padding(
@@ -158,12 +139,12 @@ class _QuranScreenState extends State<QuranScreen> {
               Icon(
                 CupertinoIcons.exclamationmark_triangle,
                 size: 48,
-                color: IslamicColors.azkarRed,
+                color: theme.red,
               ),
               const SizedBox(height: IslamicSpacing.md),
               Text(
                 'error'.tr(),
-                style: IslamicTextStyles.headlineSmall.copyWith(color: IslamicColors.azkarRed),
+                style: IslamicTextStyles.headlineSmall.copyWith(color: theme.red),
               ),
               const SizedBox(height: IslamicSpacing.sm),
               Text(
@@ -172,10 +153,9 @@ class _QuranScreenState extends State<QuranScreen> {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: IslamicSpacing.lg),
-              ElevatedButton.icon(
+              CupertinoButton.filled(
                 onPressed: () => provider.loadSurahs(forceRefresh: true),
-                icon: const Icon(CupertinoIcons.refresh),
-                label: Text('retry'.tr()),
+                child: Text('retry'.tr()),
               ),
             ],
           ),
@@ -184,161 +164,124 @@ class _QuranScreenState extends State<QuranScreen> {
     );
   }
 
-  Widget _buildSurahList(QuranProvider provider, bool isArabic) {
+  Widget _buildSurahList(
+    QuranProvider provider,
+    bool isArabic,
+    IslamicTheme theme,
+  ) {
     final surahs = _searchQuery.isEmpty
         ? provider.surahs
         : provider.searchSurahs(_searchQuery);
+
+    if (surahs.isEmpty) {
+      return SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.all(IslamicSpacing.lg),
+          child: Center(
+            child: Text(
+              'no_results'.tr(),
+              style: IslamicTextStyles.bodyMedium
+                  .copyWith(color: theme.textSecondary),
+            ),
+          ),
+        ),
+      );
+    }
 
     return SliverList(
       delegate: SliverChildBuilderDelegate(
         (context, index) {
           final surah = surahs[index];
-          return _buildSurahCard(surah, provider, isArabic);
+          return _buildSurahTile(surah, provider, isArabic, theme);
         },
         childCount: surahs.length,
       ),
     );
   }
 
-  Widget _buildSurahCard(Surah surah, QuranProvider provider, bool isArabic) {
+  Widget _buildSurahTile(
+    Surah surah,
+    QuranProvider provider,
+    bool isArabic,
+    IslamicTheme theme,
+  ) {
     final isBookmarked = provider.quranBookmarks
         .any((b) => b.surahNumber == surah.number && b.ayahNumber == 0);
-    final theme = IslamicTheme.of(context);
 
-    return Card(
+    const badgeRadius = IslamicRadius.sm + 2.0;
+
+    return HIGGroup(
       margin: const EdgeInsets.symmetric(
-        horizontal: IslamicSpacing.md,
+        horizontal: kHIGMargin,
         vertical: IslamicSpacing.xs,
       ),
-      color: theme.card,
-      child: InkWell(
-        onTap: () => _showSurahDetail(surah, provider),
-        borderRadius: BorderRadius.circular(IslamicRadius.lg),
-        child: Padding(
-          padding: const EdgeInsets.all(IslamicSpacing.md),
-          child: Row(
-            children: [
-              // Surah number circle
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      IslamicColors.primaryGreen,
-                      IslamicColors.primaryGreenLight,
-                    ],
+      children: [
+        HIGTile(
+          onTap: () => _showSurahDetail(surah, provider),
+          icon: CupertinoIcons.book_fill,
+          iconColor: theme.accent,
+          label: surah.englishName,
+          subtitleWidget: Padding(
+            padding: const EdgeInsets.only(top: 2.0),
+            child: Row(
+              children: [
+                Text(
+                  surah.name,
+                  style: IslamicTextStyles.arabicMedium.copyWith(
+                    fontSize: 20,
+                    color: theme.textPrimary,
                   ),
-                  borderRadius: BorderRadius.circular(IslamicRadius.md),
+                  textDirection: ui.TextDirection.rtl,
+                ),
+                const SizedBox(width: IslamicSpacing.sm),
+                Expanded(
+                  child: Text(
+                    surah.englishNameTranslation,
+                    style: IslamicTextStyles.bodySmall
+                        .copyWith(color: theme.textTertiary),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Surah number chip
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: theme.accentSoft,
+                  borderRadius: BorderRadius.circular(badgeRadius),
                 ),
                 child: Center(
                   child: Text(
                     surah.number.toString(),
-                    style: IslamicTextStyles.titleMedium.copyWith(
-                      color: Colors.white,
+                    style: IslamicTextStyles.titleSmall.copyWith(
+                      color: theme.accent,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
               ),
-              const SizedBox(width: IslamicSpacing.md),
-
-              // Surah info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Arabic name
-                    Text(
-                      surah.name,
-                      style: IslamicTextStyles.arabicMedium.copyWith(
-                        fontSize: 22,
-                        color: theme.textPrimary,
-                      ),
-                      textDirection: ui.TextDirection.rtl,
-                    ),
-                    const SizedBox(height: 2),
-                    // English name
-                    Text(
-                      surah.englishName,
-                      style: IslamicTextStyles.bodyMedium.copyWith(
-                        color: theme.textSecondary,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    // Translation
-                    Text(
-                      surah.englishNameTranslation,
-                      style: IslamicTextStyles.bodySmall.copyWith(
-                        color: theme.textTertiary,
-                      ),
-                    ),
-                  ],
+              const SizedBox(width: IslamicSpacing.sm),
+              // Bookmark toggle
+              CupertinoButton(
+                padding: EdgeInsets.zero,
+                onPressed: () => _toggleSurahBookmark(surah, provider),
+                child: Icon(
+                  isBookmarked
+                      ? CupertinoIcons.bookmark_fill
+                      : CupertinoIcons.bookmark,
+                  color: isBookmarked ? theme.gold : theme.textTertiary,
+                  size: 22,
                 ),
-              ),
-
-              // Stats and actions
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  // Ayah count
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: IslamicSpacing.sm,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: IslamicColors.secondaryGreen,
-                      borderRadius: BorderRadius.circular(IslamicRadius.pill),
-                    ),
-                    child: Text(
-                      '${surah.numberOfAyahs} ${'ayah'.tr()}',
-                      style: IslamicTextStyles.labelSmall.copyWith(
-                        color: IslamicColors.primaryGreenDark,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: IslamicSpacing.xs),
-                  // Type badge
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: IslamicSpacing.sm,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: surah.revelationType.toLowerCase() == 'meccan'
-                          ? IslamicColors.prayerBlue.withValues(alpha: 0.1)
-                          : IslamicColors.qiblaOrange.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(IslamicRadius.pill),
-                    ),
-                    child: Text(
-                      surah.revelationType,
-                      style: IslamicTextStyles.labelSmall.copyWith(
-                        color: surah.revelationType.toLowerCase() == 'meccan'
-                            ? IslamicColors.prayerBlue
-                            : IslamicColors.qiblaOrange,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: IslamicSpacing.sm),
-                  // Bookmark
-                  IconButton(
-                    icon: Icon(
-                      isBookmarked
-                          ? CupertinoIcons.bookmark_fill
-                          : CupertinoIcons.bookmark,
-                      color: isBookmarked ? IslamicColors.accentGold : IslamicColors.labelTertiary,
-                      size: 22,
-                    ),
-                    onPressed: () => _toggleSurahBookmark(surah, provider),
-                    tooltip: isBookmarked ? 'remove_bookmark'.tr() : 'add_bookmark'.tr(),
-                  ),
-                ],
               ),
             ],
           ),
         ),
-      ),
+      ],
     );
   }
 
@@ -376,6 +319,7 @@ class _BookmarksModal extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bookmarks = provider.quranBookmarks;
+    final theme = IslamicTheme.of(context);
 
     return CupertinoActionSheet(
       title: Text('bookmarks'.tr(), style: IslamicTextStyles.titleMedium),
@@ -392,7 +336,8 @@ class _BookmarksModal extends StatelessWidget {
                   context,
                   CupertinoPageRoute(
                     builder: (_) => SurahDetailScreen(
-                      surah: provider.surahs.firstWhere((s) => s.number == b.surahNumber),
+                      surah: provider.surahs
+                          .firstWhere((s) => s.number == b.surahNumber),
                       initialAyah: b.ayahNumber,
                     ),
                   ),
@@ -402,7 +347,8 @@ class _BookmarksModal extends StatelessWidget {
           },
           child: Text(
             'Surah ${b.surahNumber} - Ayah ${b.ayahNumber}',
-            style: IslamicTextStyles.bodyMedium,
+            style: IslamicTextStyles.bodyMedium
+                .copyWith(color: theme.textPrimary),
           ),
         );
       }).toList(),
@@ -436,6 +382,7 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
   int? _playingAyah;
   final ScrollController _scrollController = ScrollController();
   int _currentIndex = 0;
+  int _lastRecorded = 0;
 
   @override
   void initState() {
@@ -472,8 +419,6 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
     );
   }
 
-  int _lastRecorded = 0;
-
   @override
   void dispose() {
     _audioPlayer.dispose();
@@ -487,6 +432,17 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
       final provider = context.read<QuranProvider>();
       _ayahs = await provider.loadSurahAyahs(widget.surah.number);
       _error = null;
+      if (widget.initialAyah != null && _ayahs.isNotEmpty) {
+        final idx = _ayahs.indexWhere(
+          (a) => a.numberInSurah == widget.initialAyah,
+        );
+        if (idx >= 0) {
+          _currentIndex = idx;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) _goToAyah(idx);
+          });
+        }
+      }
     } catch (e) {
       _error = e.toString();
     } finally {
@@ -515,28 +471,42 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsProvider>();
     final isArabic = settings.locale.languageCode == 'ar';
+    final theme = IslamicTheme.of(context);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.surah.name, style: IslamicTextStyles.arabicMedium),
-        centerTitle: true,
-      ),
+    return HIGScaffold(
+      title: widget.surah.name,
+      useScrollView: false,
       body: Stack(
         children: [
           _isLoading
-              ? const Center(child: CircularProgressIndicator())
+              ? Center(
+                  child: CupertinoActivityIndicator(color: theme.accent),
+                )
               : _error != null
-                  ? Center(child: Text(_error!))
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(IslamicSpacing.lg),
+                        child: Text(
+                          _error!,
+                          style: IslamicTextStyles.bodyMedium,
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    )
                   : ListView.builder(
                       controller: _scrollController,
-                      padding: const EdgeInsets.all(IslamicSpacing.md),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: kHIGMargin,
+                        vertical: IslamicSpacing.md,
+                      ),
                       itemCount: _ayahs.length,
                       itemBuilder: (context, index) {
                         final ayah = _ayahs[index];
-                        return _buildAyahItem(ayah, isArabic, settings);
+                        return _buildAyahCard(ayah, isArabic, settings, theme);
                       },
                     ),
-          // Tap zones: left = next ayah, right = previous ayah.
+
+          // Tap zones: left half = next ayah, right half = previous ayah.
           if (!_isLoading && _error == null)
             Row(
               children: [
@@ -554,88 +524,130 @@ class _SurahDetailScreenState extends State<SurahDetailScreen> {
                 ),
               ],
             ),
+
+          // Position pill (current ayah / total).
+          if (!_isLoading && _error == null && _ayahs.isNotEmpty)
+            Positioned(
+              top: IslamicSpacing.sm,
+              left: kHIGMargin,
+              right: kHIGMargin,
+              child: IgnorePointer(
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: IslamicSpacing.md,
+                      vertical: IslamicSpacing.xs,
+                    ),
+                    decoration: BoxDecoration(
+                      color: theme.card,
+                      borderRadius: BorderRadius.circular(IslamicRadius.pill),
+                      boxShadow: IslamicShadows.card,
+                    ),
+                    child: Text(
+                      '${_ayahs[_currentIndex].numberInSurah} / ${_ayahs.length}',
+                      style: IslamicTextStyles.labelMedium.copyWith(
+                        color: theme.textSecondary,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
   }
 
-  Widget _buildAyahItem(Ayah ayah, bool isArabic, SettingsProvider settings) {
+  Widget _buildAyahCard(
+    Ayah ayah,
+    bool isArabic,
+    SettingsProvider settings,
+    IslamicTheme theme,
+  ) {
     final isPlaying = _playingAyah == ayah.numberInSurah;
-    final theme = IslamicTheme.of(context);
+    final isCurrent = _ayahs[_currentIndex] == ayah;
 
-    return Card(
+    return HIGCard(
       margin: const EdgeInsets.only(bottom: IslamicSpacing.md),
-      color: theme.card,
-      child: Padding(
-        padding: const EdgeInsets.all(IslamicSpacing.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Ayah number
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: IslamicSpacing.sm,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: IslamicColors.secondaryGreen,
-                    borderRadius: BorderRadius.circular(IslamicRadius.pill),
-                  ),
-                  child: Text(
-                    '${ayah.numberInSurah}',
-                    style: IslamicTextStyles.labelSmall.copyWith(
-                      color: IslamicColors.primaryGreenDark,
-                    ),
-                  ),
+      color: isCurrent ? theme.accentSoft : theme.card,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Ayah number + actions
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: IslamicSpacing.sm,
+                  vertical: 2,
                 ),
-                const Spacer(),
-                IconButton(
-                  icon: Icon(
-                    isPlaying ? CupertinoIcons.pause_fill : CupertinoIcons.play_fill,
+                decoration: BoxDecoration(
+                  color: theme.accentSoft,
+                  borderRadius: BorderRadius.circular(IslamicRadius.pill),
+                ),
+                child: Text(
+                  '${ayah.numberInSurah}',
+                  style: IslamicTextStyles.labelSmall.copyWith(
                     color: theme.accent,
                   ),
-                  onPressed: () => _playAyah(ayah),
                 ),
-                IconButton(
-                  icon: const Icon(CupertinoIcons.bookmark),
-                  color: theme.textTertiary,
-                  onPressed: () => _toggleBookmark(ayah),
-                ),
-              ],
-            ),
-            const SizedBox(height: IslamicSpacing.md),
-
-            // Arabic text
-            Text(
-              ayah.textArabic,
-              style: IslamicTextStyles.quranAyah.copyWith(
-                fontSize: settings.settings.quranFontSize,
-                color: theme.textPrimary,
               ),
-              textDirection: ui.TextDirection.rtl,
-              textAlign: TextAlign.center,
-            ),
-
-            // Translation
-            if (settings.settings.showTranslation && ayah.translation.isNotEmpty) ...[
-              const SizedBox(height: IslamicSpacing.md),
-              Divider(color: theme.separator),
-              const SizedBox(height: IslamicSpacing.sm),
-              Text(
-                ayah.translation,
-                style: IslamicTextStyles.quranTranslation.copyWith(
-                  color: theme.textSecondary,
+              const Spacer(),
+              CupertinoButton(
+                padding: EdgeInsets.zero,
+                onPressed: () => _playAyah(ayah),
+                child: Icon(
+                  isPlaying ? CupertinoIcons.pause_fill : CupertinoIcons.play_fill,
+                  color: theme.accent,
                 ),
-                textDirection: isArabic ? ui.TextDirection.rtl : ui.TextDirection.ltr,
-                textAlign: isArabic ? TextAlign.right : TextAlign.left,
+              ),
+              CupertinoButton(
+                padding: EdgeInsets.zero,
+                onPressed: () => _toggleBookmark(ayah),
+                child: Icon(
+                  _isBookmarked(ayah)
+                      ? CupertinoIcons.bookmark_fill
+                      : CupertinoIcons.bookmark,
+                  color: _isBookmarked(ayah) ? theme.gold : theme.textTertiary,
+                ),
               ),
             ],
+          ),
+          const SizedBox(height: IslamicSpacing.md),
+
+          // Arabic text
+          Text(
+            ayah.textArabic,
+            style: IslamicTextStyles.quranAyah.copyWith(
+              fontSize: settings.settings.quranFontSize,
+              color: theme.textPrimary,
+            ),
+            textDirection: ui.TextDirection.rtl,
+            textAlign: TextAlign.center,
+          ),
+
+          // Translation
+          if (settings.settings.showTranslation && ayah.translation.isNotEmpty) ...[
+            const SizedBox(height: IslamicSpacing.md),
+            Divider(color: theme.separator, height: 1, thickness: 0.5),
+            const SizedBox(height: IslamicSpacing.sm),
+            Text(
+              ayah.translation,
+              style: IslamicTextStyles.quranTranslation.copyWith(
+                color: theme.textSecondary,
+              ),
+              textDirection: isArabic ? ui.TextDirection.rtl : ui.TextDirection.ltr,
+              textAlign: isArabic ? TextAlign.right : TextAlign.left,
+            ),
           ],
-        ),
+        ],
       ),
     );
+  }
+
+  bool _isBookmarked(Ayah ayah) {
+    final provider = context.read<QuranProvider>();
+    return provider.isBookmarked(widget.surah.number, ayah.numberInSurah);
   }
 
   void _toggleBookmark(Ayah ayah) {

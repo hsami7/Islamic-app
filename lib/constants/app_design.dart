@@ -37,7 +37,6 @@ class IslamicColors {
   static const Color quranGold = Color(0xFFD4A843);
   static const Color prayerBlue = Color(0xFF007AFF);
   static const Color qiblaOrange = Color(0xFFFF9F0A);
-  static const Color hadithPurple = Color(0xFFAF52DE);
   static const Color azkarRed = Color(0xFFFF453A);
 
   // Dark mode
@@ -54,6 +53,9 @@ class IslamicColors {
   static const Color darkSeparator = Color(0xFF545458);
   static const Color darkOpaqueSeparator = Color(0xFF38383A);
 }
+
+/// Edge horizontal margin for full-width HIG content (lists, groups, screens).
+const double kHIGMargin = 20.0;
 
 /// Spacing system following Apple HIG (8pt grid)
 class IslamicSpacing {
@@ -201,6 +203,24 @@ class IslamicTextStyles {
     height: 1.45,
   );
 
+  // Footnote / caption (HIG grouped section footer, subtitles)
+  static const TextStyle footnote = TextStyle(
+    fontFamily: 'SF Pro',
+    fontSize: 13,
+    fontWeight: FontWeight.w400,
+    letterSpacing: -0.08,
+    height: 1.4,
+  );
+
+  // Callout (slightly emphasized caption)
+  static const TextStyle callout = TextStyle(
+    fontFamily: 'SF Pro',
+    fontSize: 14,
+    fontWeight: FontWeight.w400,
+    letterSpacing: -0.12,
+    height: 1.4,
+  );
+
   // Arabic specific styles
   static const TextStyle arabicLarge = TextStyle(
     fontFamily: 'Amiri',
@@ -296,7 +316,6 @@ class IslamicIcons {
   static const IconData quran = IconData(0xF300, fontFamily: 'IslamicIcons');
   static const IconData prayer = IconData(0xF301, fontFamily: 'IslamicIcons');
   static const IconData qibla = IconData(0xF302, fontFamily: 'IslamicIcons');
-  static const IconData hadith = IconData(0xF303, fontFamily: 'IslamicIcons');
   static const IconData azkar = IconData(0xF304, fontFamily: 'IslamicIcons');
   static const IconData tasbih = IconData(0xF305, fontFamily: 'IslamicIcons');
   static const IconData kaaba = IconData(0xF306, fontFamily: 'IslamicIcons');

@@ -4,6 +4,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../../constants/app_design.dart';
+import '../../theme/islamic_theme.dart';
+import '../../widgets/hig.dart';
 import '../../providers/qibla_provider.dart';
 import '../../providers/settings_provider.dart';
 
@@ -31,7 +33,9 @@ class _QiblaScreenState extends State<QiblaScreen>
     );
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<QiblaProvider>().initialize(context.read<SettingsProvider>());
+      context
+          .read<QiblaProvider>()
+          .initialize(context.read<SettingsProvider>());
     });
   }
 
@@ -43,17 +47,15 @@ class _QiblaScreenState extends State<QiblaScreen>
 
   @override
   Widget build(BuildContext context) {
-    final settings = context.watch<SettingsProvider>();
     final qiblaProvider = context.watch<QiblaProvider>();
-    final isDark = settings.isDarkMode;
+    final theme = IslamicTheme.of(context);
 
     return Scaffold(
-      backgroundColor: isDark
-          ? IslamicColors.darkSystemGroupedBackground
-          : IslamicColors.systemGroupedBackground,
+      backgroundColor: theme.background,
       body: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
         slivers: [
-          _buildSliverAppBar(qiblaProvider, settings),
+          _buildSliverAppBar(qiblaProvider, theme),
           SliverFillRemaining(
             child: Center(
               child: Padding(
@@ -61,13 +63,13 @@ class _QiblaScreenState extends State<QiblaScreen>
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    _buildCompass(qiblaProvider, settings),
+                    _buildCompass(qiblaProvider, theme),
                     const SizedBox(height: IslamicSpacing.xl),
-                    _buildInstruction(qiblaProvider, settings),
+                    _buildInstruction(qiblaProvider, theme),
                     const SizedBox(height: IslamicSpacing.lg),
-                    _buildDistanceCard(qiblaProvider, settings),
+                    _buildDistanceCard(qiblaProvider, theme),
                     const SizedBox(height: IslamicSpacing.lg),
-                    _buildCalibrateButton(qiblaProvider, settings),
+                    _buildCalibrateButton(qiblaProvider, theme),
                   ],
                 ),
               ),
@@ -78,16 +80,19 @@ class _QiblaScreenState extends State<QiblaScreen>
     );
   }
 
-  Widget _buildSliverAppBar(QiblaProvider provider, SettingsProvider settings) {
+  Widget _buildSliverAppBar(QiblaProvider provider, IslamicTheme theme) {
     return SliverAppBar(
-      expandedHeight: 100,
+      expandedHeight: 96,
       floating: true,
       snap: true,
       pinned: true,
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: theme.background,
       surfaceTintColor: Colors.transparent,
       flexibleSpace: FlexibleSpaceBar(
-        title: Text('qibla'.tr(), style: IslamicTextStyles.titleLarge),
+        title: Text(
+          'qibla'.tr(),
+          style: IslamicTextStyles.titleLarge.copyWith(color: theme.textPrimary),
+        ),
         centerTitle: true,
         background: Container(
           decoration: BoxDecoration(
@@ -95,8 +100,8 @@ class _QiblaScreenState extends State<QiblaScreen>
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                IslamicColors.qiblaOrange.withValues(alpha: 0.15),
-                IslamicColors.primaryGreen.withValues(alpha: 0.05),
+                IslamicColors.qiblaOrange.withValues(alpha: 0.12),
+                IslamicColors.primaryGreen.withValues(alpha: 0.04),
               ],
             ),
           ),
@@ -104,14 +109,15 @@ class _QiblaScreenState extends State<QiblaScreen>
       ),
       actions: [
         IconButton(
-          icon: const Icon(CupertinoIcons.refresh),
-          onPressed: () => provider.loadQiblaDirection(context.read<SettingsProvider>()),
+          icon: Icon(CupertinoIcons.refresh, color: theme.textPrimary),
+          onPressed: () =>
+              provider.loadQiblaDirection(context.read<SettingsProvider>()),
         ),
       ],
     );
   }
 
-  Widget _buildCompass(QiblaProvider provider, SettingsProvider settings) {
+  Widget _buildCompass(QiblaProvider provider, IslamicTheme theme) {
     return AnimatedBuilder(
       animation: _compassAnimation,
       builder: (context, child) {
@@ -124,8 +130,9 @@ class _QiblaScreenState extends State<QiblaScreen>
               height: 280,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
+                color: theme.card,
                 border: Border.all(
-                  color: IslamicColors.separator.withValues(alpha: 0.3),
+                  color: theme.separator.withValues(alpha: 0.4),
                   width: 2,
                 ),
                 boxShadow: IslamicShadows.cardElevated,
@@ -142,7 +149,7 @@ class _QiblaScreenState extends State<QiblaScreen>
                     isMajor: isMajor,
                     color: isMajor
                         ? IslamicColors.qiblaOrange
-                        : IslamicColors.separator.withValues(alpha: 0.5),
+                        : theme.separator.withValues(alpha: 0.5),
                   ),
                 ),
               );
@@ -230,38 +237,35 @@ class _QiblaScreenState extends State<QiblaScreen>
     );
   }
 
-  Widget _buildInstruction(QiblaProvider provider, SettingsProvider settings) {
+  Widget _buildInstruction(QiblaProvider provider, IslamicTheme theme) {
     final instruction = provider.getDirectionInstruction();
+    final isFacing = instruction.contains('facing');
+    final color =
+        isFacing ? IslamicColors.primaryGreen : IslamicColors.qiblaOrange;
 
     return Container(
       padding: const EdgeInsets.all(IslamicSpacing.md),
       decoration: BoxDecoration(
-        color: instruction.contains('facing')
-            ? IslamicColors.primaryGreen.withValues(alpha: 0.15)
-            : IslamicColors.qiblaOrange.withValues(alpha: 0.15),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(IslamicRadius.lg),
         border: Border.all(
-          color: instruction.contains('facing')
-              ? IslamicColors.primaryGreen.withValues(alpha: 0.3)
-              : IslamicColors.qiblaOrange.withValues(alpha: 0.3),
+          color: color.withValues(alpha: 0.3),
         ),
       ),
       child: Column(
         children: [
           Icon(
-            instruction.contains('facing')
+            isFacing
                 ? CupertinoIcons.checkmark_seal_fill
                 : CupertinoIcons.arrow_turn_up_right,
             size: 32,
-            color: instruction.contains('facing')
-                ? IslamicColors.primaryGreen
-                : IslamicColors.qiblaOrange,
+            color: color,
           ),
           const SizedBox(height: IslamicSpacing.sm),
           Text(
             instruction,
             style: IslamicTextStyles.titleMedium.copyWith(
-              color: instruction.contains('facing')
+              color: isFacing
                   ? IslamicColors.primaryGreenDark
                   : IslamicColors.qiblaOrange,
               fontWeight: FontWeight.w600,
@@ -273,48 +277,57 @@ class _QiblaScreenState extends State<QiblaScreen>
     );
   }
 
-  Widget _buildDistanceCard(QiblaProvider provider, SettingsProvider settings) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(IslamicSpacing.lg),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _buildInfoItem(
-              'distance_to_kaaba'.tr(),
-              provider.getDistanceToKaaba(),
-              CupertinoIcons.location,
-              IslamicColors.qiblaOrange,
-            ),
-            _buildDivider(),
-            _buildInfoItem(
-              'qibla_direction'.tr(),
-              provider.qiblaDirection?.formattedDirection ?? '--°',
-              CupertinoIcons.compass,
-              IslamicColors.prayerBlue,
-            ),
-            _buildDivider(),
-            _buildInfoItem(
-              'coordinates'.tr(),
-              provider.qiblaDirection != null
-                  ? '${provider.qiblaDirection!.latitude.toStringAsFixed(4)}°, ${provider.qiblaDirection!.longitude.toStringAsFixed(4)}°'
-                  : '--',
-              CupertinoIcons.map_pin,
-              IslamicColors.qiblaOrange,
-            ),
-          ],
-        ),
+  Widget _buildDistanceCard(QiblaProvider provider, IslamicTheme theme) {
+    return HIGCard(
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _buildInfoItem(
+            'distance_to_kaaba'.tr(),
+            provider.getDistanceToKaaba(),
+            CupertinoIcons.location,
+            IslamicColors.qiblaOrange,
+            theme,
+          ),
+          _buildDivider(),
+          _buildInfoItem(
+            'qibla_direction'.tr(),
+            provider.qiblaDirection?.formattedDirection ?? '--°',
+            CupertinoIcons.compass,
+            IslamicColors.prayerBlue,
+            theme,
+          ),
+          _buildDivider(),
+          _buildInfoItem(
+            'coordinates'.tr(),
+            provider.qiblaDirection != null
+                ? '${provider.qiblaDirection!.latitude.toStringAsFixed(4)}°, ${provider.qiblaDirection!.longitude.toStringAsFixed(4)}°'
+                : '--',
+            CupertinoIcons.map_pin,
+            IslamicColors.qiblaOrange,
+            theme,
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildInfoItem(String label, String value, IconData icon, Color color) {
+  Widget _buildInfoItem(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+    IslamicTheme theme,
+  ) {
     return Column(
       children: [
         Icon(icon, color: color, size: 24),
         const SizedBox(height: IslamicSpacing.xs),
         Text(value, style: IslamicTextStyles.titleMedium.copyWith(color: color)),
-        Text(label, style: IslamicTextStyles.bodySmall),
+        Text(
+          label,
+          style: IslamicTextStyles.bodySmall.copyWith(color: theme.textTertiary),
+        ),
       ],
     );
   }
@@ -323,21 +336,26 @@ class _QiblaScreenState extends State<QiblaScreen>
     return Container(
       height: 40,
       width: 1,
-      color: IslamicColors.separator,
+      color: IslamicTheme.of(context).separator,
     );
   }
 
-  Widget _buildCalibrateButton(QiblaProvider provider, SettingsProvider settings) {
+  Widget _buildCalibrateButton(QiblaProvider provider, IslamicTheme theme) {
     return SizedBox(
       width: double.infinity,
       child: OutlinedButton.icon(
-        onPressed: () => provider.calibrateCompass(context.read<SettingsProvider>()),
+        onPressed: () =>
+            provider.calibrateCompass(context.read<SettingsProvider>()),
         icon: const Icon(CupertinoIcons.arrow_clockwise),
         label: Text('calibrate'.tr()),
         style: OutlinedButton.styleFrom(
           padding: const EdgeInsets.symmetric(vertical: IslamicSpacing.md),
+          foregroundColor:
+              provider.isCalibrating ? IslamicColors.qiblaOrange : IslamicColors.primaryGreen,
           side: BorderSide(
-            color: provider.isCalibrating ? IslamicColors.qiblaOrange : IslamicColors.primaryGreen,
+            color: provider.isCalibrating
+                ? IslamicColors.qiblaOrange
+                : IslamicColors.primaryGreen,
             width: 2,
           ),
         ),

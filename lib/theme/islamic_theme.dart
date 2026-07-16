@@ -46,6 +46,9 @@ class IslamicTheme {
   factory IslamicTheme.of(BuildContext context) =>
       IslamicTheme.fromBrightness(Theme.of(context).brightness);
 
+  /// App default locale (Arabic).
+  Locale get locale => const Locale('ar');
+
   static final IslamicTheme light = IslamicTheme._(
     isDark: false,
     background: IslamicColors.systemBackground,

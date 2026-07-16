@@ -3,10 +3,12 @@ import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../../constants/app_design.dart';
+import '../../theme/islamic_theme.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/quran_provider.dart';
 import '../../providers/azkar_provider.dart';
 import '../../services/storage_service.dart';
+import '../../widgets/hig.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -27,24 +29,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsProvider>();
-    final isDark = settings.isDarkMode;
+    final theme = IslamicTheme.of(context);
 
     return Scaffold(
-      backgroundColor: isDark
-          ? IslamicColors.darkSystemGroupedBackground
-          : IslamicColors.systemGroupedBackground,
+      backgroundColor: theme.background,
       body: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
         slivers: [
-          _buildSliverAppBar(settings),
+          _buildSliverAppBar(theme),
           SliverList(
             delegate: SliverChildListDelegate([
-              _buildGeneralSection(settings),
-              _buildPrayerTimesSection(settings),
-              _buildQuranSection(settings),
-              _buildNotificationsSection(settings),
-              _buildAppearanceSection(settings),
-              _buildAdvancedSection(settings),
-              _buildAboutSection(settings),
+              _buildGeneralSection(settings, theme),
+              _buildPrayerTimesSection(settings, theme),
+              _buildQuranSection(settings, theme),
+              _buildNotificationsSection(settings, theme),
+              _buildAppearanceSection(settings, theme),
+              _buildAdvancedSection(settings, theme),
+              _buildAboutSection(settings, theme),
               const SizedBox(height: IslamicSpacing.xl),
             ]),
           ),
@@ -53,16 +54,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildSliverAppBar(SettingsProvider settings) {
+  Widget _buildSliverAppBar(IslamicTheme theme) {
     return SliverAppBar(
-      expandedHeight: 100,
+      expandedHeight: 96,
       floating: true,
       snap: true,
       pinned: true,
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: theme.background,
       surfaceTintColor: Colors.transparent,
       flexibleSpace: FlexibleSpaceBar(
-        title: Text('settings'.tr(), style: IslamicTextStyles.titleLarge),
+        title: Text(
+          'settings'.tr(),
+          style: IslamicTextStyles.titleLarge.copyWith(color: theme.textPrimary),
+        ),
         centerTitle: true,
         background: Container(
           decoration: BoxDecoration(
@@ -70,8 +74,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                IslamicColors.primaryGreen.withValues(alpha: 0.15),
-                IslamicColors.secondaryGreen.withValues(alpha: 0.05),
+                IslamicColors.primaryGreen.withValues(alpha: 0.12),
+                IslamicColors.secondaryGreen.withValues(alpha: 0.04),
               ],
             ),
           ),
@@ -83,37 +87,51 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget _buildSectionHeader(String title, IconData icon, Color color) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(
-        IslamicSpacing.md,
+        kHIGMargin,
         IslamicSpacing.lg,
-        IslamicSpacing.md,
+        kHIGMargin,
         IslamicSpacing.sm,
       ),
       child: Row(
         children: [
           Icon(icon, color: color, size: 20),
           const SizedBox(width: IslamicSpacing.sm),
-          Text(title, style: IslamicTextStyles.titleMedium.copyWith(color: color)),
+          Text(
+            title,
+            style: IslamicTextStyles.titleMedium.copyWith(color: color),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildGeneralSection(SettingsProvider settings) {
+  Widget _buildGeneralSection(SettingsProvider settings, IslamicTheme theme) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader('general'.tr(), CupertinoIcons.gear, IslamicColors.primaryGreen),
-        _buildSettingsCard([
-          _buildListTile(
-            'language'.tr(),
-            settings.locale.languageCode == 'ar' ? 'arabic'.tr() : 'english'.tr(),
-            CupertinoIcons.globe,
+        _buildSectionHeader(
+          'general'.tr(),
+          CupertinoIcons.gear,
+          IslamicColors.primaryGreen,
+        ),
+        HIGGroup(children: [
+          HIGTile(
+            leading: Icon(CupertinoIcons.globe, color: theme.textSecondary),
+            title: 'language'.tr(),
+            subtitle: settings.locale.languageCode == 'ar'
+                ? 'arabic'.tr()
+                : 'english'.tr(),
+            trailing: const Icon(CupertinoIcons.chevron_right,
+                color: CupertinoColors.systemGrey),
             onTap: () => _showLanguagePicker(settings),
           ),
-          _buildListTile(
-            'theme'.tr(),
-            _getThemeLabel(settings),
-            CupertinoIcons.paintbrush,
+          HIGTile(
+            leading:
+                Icon(CupertinoIcons.paintbrush, color: theme.textSecondary),
+            title: 'theme'.tr(),
+            subtitle: _getThemeLabel(settings),
+            trailing: const Icon(CupertinoIcons.chevron_right,
+                color: CupertinoColors.systemGrey),
             onTap: () => _showThemePicker(settings),
           ),
         ]),
@@ -121,22 +139,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildPrayerTimesSection(SettingsProvider settings) {
+  Widget _buildPrayerTimesSection(
+    SettingsProvider settings,
+    IslamicTheme theme,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader('prayer_times'.tr(), CupertinoIcons.clock, IslamicColors.prayerBlue),
-        _buildSettingsCard([
-          _buildListTile(
-            'calculation_method'.tr(),
-            _getCalculationMethodLabel(settings),
-            CupertinoIcons.gear_alt,
+        _buildSectionHeader(
+          'prayer_times'.tr(),
+          CupertinoIcons.clock,
+          IslamicColors.prayerBlue,
+        ),
+        HIGGroup(children: [
+          HIGTile(
+            leading: Icon(CupertinoIcons.gear_alt, color: theme.textSecondary),
+            title: 'calculation_method'.tr(),
+            subtitle: _getCalculationMethodLabel(settings),
+            trailing: const Icon(CupertinoIcons.chevron_right,
+                color: CupertinoColors.systemGrey),
             onTap: () => _showCalculationMethodPicker(settings),
           ),
-          _buildListTile(
-            'madhab'.tr(),
-            _getMadhabLabel(settings),
-            CupertinoIcons.book,
+          HIGTile(
+            leading: Icon(CupertinoIcons.book, color: theme.textSecondary),
+            title: 'madhab'.tr(),
+            subtitle: _getMadhabLabel(settings),
+            trailing: const Icon(CupertinoIcons.chevron_right,
+                color: CupertinoColors.systemGrey),
             onTap: () => _showMadhabPicker(settings),
           ),
         ]),
@@ -144,44 +173,55 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildQuranSection(SettingsProvider settings) {
+  Widget _buildQuranSection(SettingsProvider settings, IslamicTheme theme) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader('quran_settings'.tr(), CupertinoIcons.book, IslamicColors.quranGold),
-        _buildSettingsCard([
-          _buildSliderTile(
-            'font_size'.tr(),
-            settings.settings.quranFontSize.toStringAsFixed(0),
-            CupertinoIcons.textformat_size,
+        _buildSectionHeader(
+          'quran_settings'.tr(),
+          CupertinoIcons.book,
+          IslamicColors.quranGold,
+        ),
+        HIGGroup(children: [
+          HIGSliderTile(
+            leading:
+                Icon(CupertinoIcons.textformat_size, color: theme.textSecondary),
+            title: 'font_size'.tr(),
+            subtitle: settings.settings.quranFontSize.toStringAsFixed(0),
             value: settings.settings.quranFontSize,
             min: 18,
             max: 40,
             divisions: 22,
             onChanged: (v) => settings.setQuranFontSize(v),
           ),
-          _buildSwitchTile(
-            'show_translation'.tr(),
-            CupertinoIcons.text_bubble,
+          HIGToggleTile(
+            leading:
+                Icon(CupertinoIcons.text_bubble, color: theme.textSecondary),
+            title: 'show_translation'.tr(),
             value: settings.settings.showTranslation,
             onChanged: (v) => settings.setShowTranslation(v),
           ),
-          _buildListTile(
-            'translation_language'.tr(),
-            _getTranslationLanguageLabel(settings),
-            CupertinoIcons.globe,
+          HIGTile(
+            leading: Icon(CupertinoIcons.globe, color: theme.textSecondary),
+            title: 'translation_language'.tr(),
+            subtitle: _getTranslationLanguageLabel(settings),
+            trailing: const Icon(CupertinoIcons.chevron_right,
+                color: CupertinoColors.systemGrey),
             onTap: () => _showTranslationPicker(settings),
           ),
-          _buildSwitchTile(
-            'auto_play_audio'.tr(),
-            CupertinoIcons.play,
+          HIGToggleTile(
+            leading: Icon(CupertinoIcons.play, color: theme.textSecondary),
+            title: 'auto_play_audio'.tr(),
             value: settings.settings.quranAudioAutoPlay,
             onChanged: (v) => settings.setQuranAudioAutoPlay(v),
           ),
-          _buildListTile(
-            'reciter'.tr(),
-            _getReciterLabel(settings.settings.quranReciter),
-            CupertinoIcons.music_note,
+          HIGTile(
+            leading:
+                Icon(CupertinoIcons.music_note, color: theme.textSecondary),
+            title: 'reciter'.tr(),
+            subtitle: _getReciterLabel(settings.settings.quranReciter),
+            trailing: const Icon(CupertinoIcons.chevron_right,
+                color: CupertinoColors.systemGrey),
             onTap: () => _showReciterPicker(settings),
           ),
         ]),
@@ -189,52 +229,64 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildNotificationsSection(SettingsProvider settings) {
+  Widget _buildNotificationsSection(
+    SettingsProvider settings,
+    IslamicTheme theme,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader('notifications'.tr(), CupertinoIcons.bell, IslamicColors.azkarRed),
-        _buildSettingsCard([
-          _buildSwitchTile(
-            'prayer_notifications'.tr(),
-            CupertinoIcons.bell_fill,
+        _buildSectionHeader(
+          'notifications'.tr(),
+          CupertinoIcons.bell,
+          IslamicColors.azkarRed,
+        ),
+        HIGGroup(children: [
+          HIGToggleTile(
+            leading:
+                Icon(CupertinoIcons.bell_fill, color: theme.textSecondary),
+            title: 'prayer_notifications'.tr(),
             value: settings.settings.notificationsEnabled,
             onChanged: (v) => settings.setNotificationsEnabled(v),
           ),
           if (settings.settings.notificationsEnabled) ...[
-            _buildListTile(
-              'advance_minutes'.tr(),
-              '${settings.settings.notificationAdvanceMinutes} min',
-              CupertinoIcons.timer,
+            HIGTile(
+              leading: Icon(CupertinoIcons.timer, color: theme.textSecondary),
+              title: 'advance_minutes'.tr(),
+              subtitle: '${settings.settings.notificationAdvanceMinutes} min',
+              trailing: const Icon(CupertinoIcons.chevron_right,
+                  color: CupertinoColors.systemGrey),
               onTap: () => _showAdvanceMinutesPicker(settings),
             ),
-            _buildSwitchTile(
-              'fajr_notification'.tr(),
-              CupertinoIcons.sunrise,
+            HIGToggleTile(
+              leading:
+                  Icon(CupertinoIcons.sunrise, color: theme.textSecondary),
+              title: 'fajr_notification'.tr(),
               value: settings.settings.fajrNotification,
               onChanged: (v) => settings.setPrayerNotification('fajr', v),
             ),
-            _buildSwitchTile(
-              'dhuhr_notification'.tr(),
-              CupertinoIcons.sun_max,
+            HIGToggleTile(
+              leading: Icon(CupertinoIcons.sun_max, color: theme.textSecondary),
+              title: 'dhuhr_notification'.tr(),
               value: settings.settings.dhuhrNotification,
               onChanged: (v) => settings.setPrayerNotification('dhuhr', v),
             ),
-            _buildSwitchTile(
-              'asr_notification'.tr(),
-              CupertinoIcons.sun_min,
+            HIGToggleTile(
+              leading: Icon(CupertinoIcons.sun_min, color: theme.textSecondary),
+              title: 'asr_notification'.tr(),
               value: settings.settings.asrNotification,
               onChanged: (v) => settings.setPrayerNotification('asr', v),
             ),
-            _buildSwitchTile(
-              'maghrib_notification'.tr(),
-              CupertinoIcons.sunset,
+            HIGToggleTile(
+              leading:
+                  Icon(CupertinoIcons.sunset, color: theme.textSecondary),
+              title: 'maghrib_notification'.tr(),
               value: settings.settings.maghribNotification,
               onChanged: (v) => settings.setPrayerNotification('maghrib', v),
             ),
-            _buildSwitchTile(
-              'isha_notification'.tr(),
-              CupertinoIcons.moon,
+            HIGToggleTile(
+              leading: Icon(CupertinoIcons.moon, color: theme.textSecondary),
+              title: 'isha_notification'.tr(),
               value: settings.settings.ishaNotification,
               onChanged: (v) => settings.setPrayerNotification('isha', v),
             ),
@@ -244,21 +296,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildAppearanceSection(SettingsProvider settings) {
+  Widget _buildAppearanceSection(SettingsProvider settings, IslamicTheme theme) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader('general'.tr(), CupertinoIcons.paintbrush, IslamicColors.quranGold),
-        _buildSettingsCard([
-          _buildSwitchTile(
-            'haptic_feedback'.tr(),
-            CupertinoIcons.hand_raised,
+        _buildSectionHeader(
+          'appearance'.tr(),
+          CupertinoIcons.paintbrush,
+          IslamicColors.quranGold,
+        ),
+        HIGGroup(children: [
+          HIGToggleTile(
+            leading:
+                Icon(CupertinoIcons.hand_raised, color: theme.textSecondary),
+            title: 'haptic_feedback'.tr(),
             value: settings.settings.hapticFeedback,
             onChanged: (v) => settings.setHapticFeedback(v),
           ),
-          _buildSwitchTile(
-            'reduce_motion'.tr(),
-            CupertinoIcons.arrow_up_down,
+          HIGToggleTile(
+            leading:
+                Icon(CupertinoIcons.arrow_up_down, color: theme.textSecondary),
+            title: 'reduce_motion'.tr(),
             value: settings.settings.reduceMotion,
             onChanged: (v) => settings.setReduceMotion(v),
           ),
@@ -267,213 +325,84 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildAdvancedSection(SettingsProvider settings) {
+  Widget _buildAdvancedSection(SettingsProvider settings, IslamicTheme theme) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader('advanced'.tr(), CupertinoIcons.wrench, IslamicColors.qiblaOrange),
-        _buildSettingsCard([
-          _buildListTile(
-            'clear_cache'.tr(),
-            '',
-            CupertinoIcons.trash,
+        _buildSectionHeader(
+          'advanced'.tr(),
+          CupertinoIcons.wrench,
+          IslamicColors.qiblaOrange,
+        ),
+        HIGGroup(children: [
+          HIGTile(
+            leading: Icon(CupertinoIcons.trash, color: theme.textSecondary),
+            title: 'clear_cache'.tr(),
             onTap: () => _clearCache(),
-            showChevron: true,
-              trailing: const Text(''),
           ),
-          _buildListTile(
-            'reset_azkar_progress'.tr(),
-            '',
-            CupertinoIcons.arrow_counterclockwise,
+          HIGTile(
+            leading: Icon(CupertinoIcons.arrow_counterclockwise,
+                color: theme.textSecondary),
+            title: 'reset_azkar_progress'.tr(),
             onTap: () => _resetAzkarProgress(),
-            showChevron: true,
           ),
-          _buildListTile(
-            'export_data'.tr(),
-            '',
-            CupertinoIcons.square_arrow_up,
+          HIGTile(
+            leading: Icon(CupertinoIcons.square_arrow_up,
+                color: theme.textSecondary),
+            title: 'export_data'.tr(),
             onTap: () => _exportData(),
-            showChevron: true,
           ),
-          _buildListTile(
-            'import_data'.tr(),
-            '',
-            CupertinoIcons.square_arrow_down,
+          HIGTile(
+            leading: Icon(CupertinoIcons.square_arrow_down,
+                color: theme.textSecondary),
+            title: 'import_data'.tr(),
             onTap: () => _importData(),
-            showChevron: true,
           ),
         ]),
       ],
     );
   }
 
-  Widget _buildAboutSection(SettingsProvider settings) {
+  Widget _buildAboutSection(SettingsProvider settings, IslamicTheme theme) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader('about'.tr(), CupertinoIcons.info, IslamicColors.labelSecondary),
-        _buildSettingsCard([
-          _buildListTile(
-            'version'.tr(),
-            '1.0.0',
-            CupertinoIcons.tag,
+        _buildSectionHeader(
+          'about'.tr(),
+          CupertinoIcons.info,
+          theme.textSecondary,
+        ),
+        HIGGroup(children: [
+          HIGTile(
+            leading: Icon(CupertinoIcons.tag, color: theme.textSecondary),
+            title: 'version'.tr(),
+            subtitle: '1.0.0',
             showChevron: false,
           ),
-          _buildListTile(
-            'privacy_policy'.tr(),
-            '',
-            CupertinoIcons.doc_text,
+          HIGTile(
+            leading:
+                Icon(CupertinoIcons.doc_text, color: theme.textSecondary),
+            title: 'privacy_policy'.tr(),
             onTap: () {},
           ),
-          _buildListTile(
-            'terms_of_service'.tr(),
-            '',
-            CupertinoIcons.doc_text_fill,
+          HIGTile(
+            leading: Icon(CupertinoIcons.doc_text_fill,
+                color: theme.textSecondary),
+            title: 'terms_of_service'.tr(),
             onTap: () {},
           ),
-          _buildListTile(
-            'rate_app'.tr(),
-            '',
-            CupertinoIcons.star,
+          HIGTile(
+            leading: Icon(CupertinoIcons.star, color: theme.textSecondary),
+            title: 'rate_app'.tr(),
             onTap: () {},
           ),
-          _buildListTile(
-            'share_app'.tr(),
-            '',
-            CupertinoIcons.share,
+          HIGTile(
+            leading: Icon(CupertinoIcons.share, color: theme.textSecondary),
+            title: 'share_app'.tr(),
             onTap: () {},
           ),
         ]),
       ],
-    );
-  }
-
-  Widget _buildSettingsCard(List<Widget> children) {
-    final settings = context.watch<SettingsProvider>();
-    final isDark = settings.isDarkMode;
-
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: IslamicSpacing.md),
-      decoration: BoxDecoration(
-        color: isDark ? IslamicColors.darkSecondarySystemBackground : IslamicColors.systemBackground,
-        borderRadius: BorderRadius.circular(IslamicRadius.lg),
-        border: Border.all(
-          color: isDark ? IslamicColors.darkSeparator : IslamicColors.separator,
-        ),
-      ),
-      child: Column(
-        children: children.map((child) {
-          final index = children.indexOf(child);
-          return Column(
-            children: [
-              child,
-              if (index < children.length - 1)
-                Divider(
-                  height: 1,
-                  thickness: 0.5,
-                  color: isDark ? IslamicColors.darkSeparator : IslamicColors.separator,
-                  indent: IslamicSpacing.lg,
-                  endIndent: IslamicSpacing.md,
-                ),
-            ],
-          );
-        }).toList(),
-      ),
-    );
-  }
-
-  Widget _buildListTile(
-    String title,
-    String subtitle,
-    IconData icon, {
-    VoidCallback? onTap,
-    bool showChevron = true,
-    Widget? trailing,
-  }) {
-    final settings = context.watch<SettingsProvider>();
-    final isDark = settings.isDarkMode;
-
-    return ListTile(
-      leading: Icon(icon, color: isDark ? IslamicColors.darkLabelSecondary : IslamicColors.labelSecondary),
-      title: Text(title, style: IslamicTextStyles.bodyLarge),
-      subtitle: subtitle.isNotEmpty
-          ? Text(subtitle, style: IslamicTextStyles.bodySmall.copyWith(color: IslamicColors.labelTertiary))
-          : null,
-      trailing: trailing ??
-          (showChevron
-              ? Icon(
-                  CupertinoIcons.chevron_right,
-                  color: isDark ? IslamicColors.darkLabelTertiary : IslamicColors.labelTertiary,
-                )
-              : null),
-      onTap: onTap,
-      contentPadding: const EdgeInsets.symmetric(
-        horizontal: IslamicSpacing.md,
-        vertical: IslamicSpacing.xs,
-      ),
-    );
-  }
-
-  Widget _buildSwitchTile(
-    String title,
-    IconData icon, {
-    required bool value,
-    required ValueChanged<bool> onChanged,
-  }) {
-    final settings = context.watch<SettingsProvider>();
-    final isDark = settings.isDarkMode;
-
-    return ListTile(
-      leading: Icon(icon, color: isDark ? IslamicColors.darkLabelSecondary : IslamicColors.labelSecondary),
-      title: Text(title, style: IslamicTextStyles.bodyLarge),
-      trailing: CupertinoSwitch(
-        value: value,
-        onChanged: onChanged,
-        activeColor: IslamicColors.primaryGreen,
-        trackColor: isDark ? IslamicColors.darkSeparator : IslamicColors.separator,
-      ),
-      contentPadding: const EdgeInsets.symmetric(
-        horizontal: IslamicSpacing.md,
-        vertical: IslamicSpacing.xs,
-      ),
-    );
-  }
-
-  Widget _buildSliderTile(
-    String title,
-    String subtitle,
-    IconData icon, {
-    required double value,
-    required double min,
-    required double max,
-    required int divisions,
-    required ValueChanged<double> onChanged,
-  }) {
-    final settings = context.watch<SettingsProvider>();
-    final isDark = settings.isDarkMode;
-
-    return ListTile(
-      leading: Icon(icon, color: isDark ? IslamicColors.darkLabelSecondary : IslamicColors.labelSecondary),
-      title: Text(title, style: IslamicTextStyles.bodyLarge),
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(subtitle, style: IslamicTextStyles.bodySmall.copyWith(color: IslamicColors.labelTertiary)),
-          Slider(
-            value: value,
-            min: min,
-            max: max,
-            divisions: divisions,
-            onChanged: onChanged,
-            activeColor: IslamicColors.primaryGreen,
-            inactiveColor: IslamicColors.secondaryGreen,
-          ),
-        ],
-      ),
-      contentPadding: const EdgeInsets.symmetric(
-        horizontal: IslamicSpacing.md,
-        vertical: IslamicSpacing.xs,
-      ),
     );
   }
 
@@ -588,7 +517,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     showCupertinoModalPopup(
       context: context,
       builder: (_) => CupertinoActionSheet(
-        title: Text('calculation_method'.tr(), style: IslamicTextStyles.titleMedium),
+        title: Text('calculation_method'.tr(),
+            style: IslamicTextStyles.titleMedium),
         actions: SettingsProvider.calculationMethods.map((method) {
           return CupertinoActionSheetAction(
             onPressed: () {
@@ -632,7 +562,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     showCupertinoModalPopup(
       context: context,
       builder: (_) => CupertinoActionSheet(
-        title: Text('translation_language'.tr(), style: IslamicTextStyles.titleMedium),
+        title: Text('translation_language'.tr(),
+            style: IslamicTextStyles.titleMedium),
         actions: SettingsProvider.availableTranslations.map((lang) {
           return CupertinoActionSheetAction(
             onPressed: () {
@@ -718,7 +649,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     showCupertinoModalPopup(
       context: context,
       builder: (_) => CupertinoActionSheet(
-        title: Text('advance_minutes'.tr(), style: IslamicTextStyles.titleMedium),
+        title:
+            Text('advance_minutes'.tr(), style: IslamicTextStyles.titleMedium),
         actions: [0, 5, 10, 15, 30].map((min) {
           return CupertinoActionSheetAction(
             onPressed: () {
@@ -755,14 +687,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _exportData() {
-    // TODO: Implement data export
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('export_coming_soon'.tr())),
     );
   }
 
   void _importData() {
-    // TODO: Implement data import
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('import_coming_soon'.tr())),
     );

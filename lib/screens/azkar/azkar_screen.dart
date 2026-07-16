@@ -5,6 +5,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../../constants/app_design.dart';
+import '../../theme/islamic_theme.dart';
+import '../../widgets/hig.dart';
 import '../../models/azkar.dart';
 import '../../providers/azkar_provider.dart';
 import '../../providers/settings_provider.dart';
@@ -16,30 +18,8 @@ class AzkarScreen extends StatefulWidget {
   State<AzkarScreen> createState() => _AzkarScreenState();
 }
 
-class _AzkarScreenState extends State<AzkarScreen>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-  String? _selectedCategory;
-  Azkar? _selectedAzkar;
-  int _currentCount = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
-
+class _AzkarScreenState extends State<AzkarScreen> {
   void _openAzkarCounter(Azkar azkar) {
-    setState(() {
-      _selectedAzkar = azkar;
-      _currentCount = 0;
-    });
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -58,197 +38,96 @@ class _AzkarScreenState extends State<AzkarScreen>
 
   @override
   Widget build(BuildContext context) {
-    final settings = context.watch<SettingsProvider>();
     final azkarProvider = context.watch<AzkarProvider>();
-    final isDark = settings.isDarkMode;
+    final settings = context.watch<SettingsProvider>();
 
-    return Scaffold(
-      backgroundColor: isDark
-          ? IslamicColors.darkSystemGroupedBackground
-          : IslamicColors.systemGroupedBackground,
-      body: CustomScrollView(
-        slivers: [
-          _buildSliverAppBar(azkarProvider, settings),
-          _buildTabBar(azkarProvider, isDark),
-          _buildTabBarView(azkarProvider, settings),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSliverAppBar(AzkarProvider provider, SettingsProvider settings) {
-    return SliverAppBar(
-      expandedHeight: 100,
-      floating: true,
-      snap: true,
-      pinned: true,
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      surfaceTintColor: Colors.transparent,
-      flexibleSpace: FlexibleSpaceBar(
-        title: Text('azkar'.tr(), style: IslamicTextStyles.titleLarge),
-        centerTitle: true,
-        background: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                IslamicColors.azkarRed.withValues(alpha: 0.15),
-                IslamicColors.primaryGreen.withValues(alpha: 0.05),
-              ],
-            ),
-          ),
-        ),
-      ),
-      actions: [
-        IconButton(
-          icon: const Icon(CupertinoIcons.arrow_counterclockwise),
-          onPressed: () => provider.resetDailyCompletions(),
-        ),
+    return HIGScaffold(
+      title: 'azkar',
+      onRefresh: () => azkarProvider.initialize(),
+      slivers: [
+        _buildCategoriesGroup(azkarProvider, settings),
+        SliverToBoxAdapter(child: _buildFavoritesGroup(azkarProvider, settings)),
       ],
     );
   }
 
-  Widget _buildTabBar(AzkarProvider provider, bool isDark) {
-    return SliverPersistentHeader(
-      pinned: true,
-      delegate: _TabBarDelegate(
-        tabBar: TabBar(
-          controller: _tabController,
-          labelStyle: IslamicTextStyles.labelMedium,
-          unselectedLabelStyle: IslamicTextStyles.labelMedium,
-          indicatorColor: IslamicColors.azkarRed,
-          indicatorWeight: 3,
-          labelColor: IslamicColors.azkarRed,
-          unselectedLabelColor: isDark
-              ? IslamicColors.darkLabelTertiary
-              : IslamicColors.labelTertiary,
-          dividerColor: Colors.transparent,
-          isScrollable: true,
-          tabs: [
-            Tab(text: 'categories'.tr()),
-            Tab(text: 'favorites'.tr()),
-          ],
-        ),
-        backgroundColor: isDark
-            ? IslamicColors.darkSystemBackground
-            : IslamicColors.systemBackground,
-      ),
-    );
-  }
-
-  Widget _buildTabBarView(AzkarProvider provider, SettingsProvider settings) {
-    return SliverFillRemaining(
-      child: TabBarView(
-        controller: _tabController,
-        children: [
-          _buildCategoriesView(provider, settings),
-          _buildFavoritesView(provider, settings),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCategoriesView(AzkarProvider provider, SettingsProvider settings) {
+  Widget _buildCategoriesGroup(AzkarProvider provider, SettingsProvider settings) {
     if (provider.isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const SliverToBoxAdapter(
+        child: Padding(
+          padding: EdgeInsets.all(IslamicSpacing.lg),
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(IslamicSpacing.md),
-      itemCount: provider.categories.length,
-      itemBuilder: (context, index) {
-        final category = provider.categories[index];
-        return _buildCategoryCard(category, provider, settings);
-      },
-    );
-  }
-
-  Widget _buildCategoryCard(AzkarCategory category, AzkarProvider provider, SettingsProvider settings) {
-    final azkarList = category.azkar;
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: IslamicSpacing.md),
-      child: InkWell(
-        onTap: () => _showCategoryAzkar(category, provider, settings),
-        borderRadius: BorderRadius.circular(IslamicRadius.lg),
-        child: Padding(
-          padding: const EdgeInsets.all(IslamicSpacing.md),
-          child: Row(
-            children: [
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [IslamicColors.azkarRed, IslamicColors.accentGold],
+    final List<Widget> tiles = [];
+    for (final category in provider.categories) {
+      tiles.add(
+        HIGTile(
+          icon: CupertinoIcons.sparkles,
+          iconColor: IslamicTheme.of(context).red,
+          label: settings.locale.languageCode == 'ar'
+              ? category.nameArabic
+              : category.name,
+          subtitleWidget: Padding(
+            padding: const EdgeInsets.only(right: 0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    settings.locale.languageCode == 'ar'
+                        ? category.descriptionArabic
+                        : category.description,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  borderRadius: BorderRadius.circular(IslamicRadius.md),
                 ),
-                child: const Icon(CupertinoIcons.sparkles, color: Colors.white, size: 28),
-              ),
-              const SizedBox(width: IslamicSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      settings.locale.languageCode == 'ar'
-                          ? category.nameArabic
-                          : category.name,
-                      style: IslamicTextStyles.titleMedium.copyWith(
-                        color: settings.isDarkMode
-                            ? IslamicColors.darkLabelPrimary
-                            : IslamicColors.labelPrimary,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      settings.locale.languageCode == 'ar'
-                          ? category.descriptionArabic
-                          : category.description,
-                      style: IslamicTextStyles.bodySmall.copyWith(
-                        color: settings.isDarkMode
-                            ? IslamicColors.darkLabelSecondary
-                            : IslamicColors.labelSecondary,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${azkarList.length} ${'azkar'.tr()}',
-                      style: IslamicTextStyles.labelSmall.copyWith(
-                        color: IslamicColors.azkarRed,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const Icon(CupertinoIcons.chevron_right, color: IslamicColors.labelTertiary),
-            ],
+              ],
+            ),
           ),
+          trailing: _CategoryProgress(
+            count: category.azkar.length,
+          ),
+          onTap: () => _showCategoryAzkar(category, provider, settings),
         ),
+      );
+    }
+
+    return SliverToBoxAdapter(
+      child: HIGGroup(
+        header: 'categories',
+        children: tiles,
       ),
     );
   }
 
-  Widget _buildFavoritesView(AzkarProvider provider, SettingsProvider settings) {
+  Widget _buildFavoritesGroup(AzkarProvider provider, SettingsProvider settings) {
     final favorites = provider.favoriteAzkar;
 
     if (favorites.isEmpty) {
-      return Center(
+      return HIGCard(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(CupertinoIcons.heart, size: 48, color: IslamicColors.labelTertiary),
+            Icon(
+              CupertinoIcons.heart,
+              size: 48,
+              color: IslamicTheme.of(context).textTertiary,
+            ),
             const SizedBox(height: IslamicSpacing.md),
-            Text('no_favorites'.tr(), style: IslamicTextStyles.bodyMedium),
+            Text(
+              'no_favorites'.tr(),
+              style: IslamicTextStyles.bodyMedium.copyWith(
+                color: IslamicTheme.of(context).textPrimary,
+              ),
+            ),
             const SizedBox(height: IslamicSpacing.sm),
             Text(
               'add_favorites_hint'.tr(),
-              style: IslamicTextStyles.bodySmall.copyWith(color: IslamicColors.labelTertiary),
+              style: IslamicTextStyles.bodySmall.copyWith(
+                color: IslamicTheme.of(context).textTertiary,
+              ),
               textAlign: TextAlign.center,
             ),
           ],
@@ -256,17 +135,47 @@ class _AzkarScreenState extends State<AzkarScreen>
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(IslamicSpacing.md),
-      itemCount: favorites.length,
-      itemBuilder: (context, index) {
-        final azkar = favorites[index];
-        return _buildAzkarCard(azkar, provider, settings);
-      },
+    final List<Widget> tiles = [];
+    for (final azkar in favorites) {
+      final isCompleted = azkar.isCompletedToday;
+      final theme = IslamicTheme.of(context);
+      tiles.add(
+        HIGTile(
+          label: settings.locale.languageCode == 'ar'
+              ? azkar.textArabic
+              : azkar.text,
+          subtitleWidget: Text(
+            settings.locale.languageCode == 'ar'
+                ? azkar.translation
+                : azkar.reference,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          trailing: Text(
+            isCompleted
+                ? 'completed'.tr()
+                : '${azkar.todayCount}/${azkar.count}',
+            style: IslamicTextStyles.labelMedium.copyWith(
+              color: theme.accent,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          onTap: () => _openAzkarCounter(azkar),
+        ),
+      );
+    }
+
+    return HIGGroup(
+      header: 'favorites',
+      children: tiles,
     );
   }
 
-  void _showCategoryAzkar(AzkarCategory category, AzkarProvider provider, SettingsProvider settings) {
+  void _showCategoryAzkar(
+    AzkarCategory category,
+    AzkarProvider provider,
+    SettingsProvider settings,
+  ) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -277,101 +186,42 @@ class _AzkarScreenState extends State<AzkarScreen>
       ),
     );
   }
+}
 
-  Widget _buildAzkarCard(Azkar azkar, AzkarProvider provider, SettingsProvider settings) {
-    final progress = azkar.progress;
-    final isCompleted = azkar.isCompletedToday;
+/// Small pill showing the number of azkar in a category.
+class _CategoryProgress extends StatelessWidget {
+  final int count;
+  const _CategoryProgress({required this.count});
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: IslamicSpacing.md),
-      child: InkWell(
-        onTap: () => _openAzkarCounter(azkar),
-        borderRadius: BorderRadius.circular(IslamicRadius.lg),
-        child: Padding(
-          padding: const EdgeInsets.all(IslamicSpacing.md),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      settings.locale.languageCode == 'ar' ? azkar.textArabic : azkar.text,
-                      style: IslamicTextStyles.bodyMedium.copyWith(
-                        fontFamily: settings.locale.languageCode == 'ar' ? 'Amiri' : 'SF Pro',
-                        color: settings.isDarkMode ? IslamicColors.darkLabelPrimary : IslamicColors.labelPrimary,
-                        height: 1.6,
-                      ),
-                      textDirection: settings.locale.languageCode == 'ar'
-                          ? ui.TextDirection.rtl
-                          : ui.TextDirection.ltr,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  IconButton(
-                    icon: Icon(
-                      azkar.isFavorite
-                          ? CupertinoIcons.heart_fill
-                          : CupertinoIcons.heart,
-                      color: azkar.isFavorite ? IslamicColors.azkarRed : IslamicColors.labelTertiary,
-                    ),
-                    onPressed: () => provider.toggleFavorite(azkar.id),
-                  ),
-                ],
-              ),
-              const SizedBox(height: IslamicSpacing.sm),
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: IslamicSpacing.sm,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isCompleted
-                          ? IslamicColors.primaryGreen.withValues(alpha: 0.15)
-                          : IslamicColors.azkarRed.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(IslamicRadius.pill),
-                    ),
-                    child: Text(
-                      isCompleted ? 'completed'.tr() : '${azkar.todayCount}/${azkar.count}',
-                      style: IslamicTextStyles.labelSmall.copyWith(
-                        color: isCompleted
-                            ? IslamicColors.primaryGreen
-                            : IslamicColors.azkarRed,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: IslamicSpacing.md),
-                  Expanded(
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(IslamicRadius.pill),
-                      child: LinearProgressIndicator(
-                        value: progress,
-                        minHeight: 4,
-                        backgroundColor: IslamicColors.separator.withValues(alpha: 0.2),
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          isCompleted ? IslamicColors.primaryGreen : IslamicColors.azkarRed,
-                        ),
-                      ),
-                    ),
-                  ),
-                  if (azkar.reference.isNotEmpty) ...[
-                    const SizedBox(width: IslamicSpacing.md),
-                    Text(
-                      azkar.reference,
-                      style: IslamicTextStyles.bodySmall.copyWith(
-                        color: IslamicColors.labelTertiary,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ],
+  @override
+  Widget build(BuildContext context) {
+    final theme = IslamicTheme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: IslamicSpacing.sm,
+        vertical: 4,
+      ),
+      decoration: BoxDecoration(
+        color: theme.red.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(IslamicRadius.pill),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            CupertinoIcons.chevron_right,
+            size: 14,
+            color: theme.textTertiary,
           ),
-        ),
+          const SizedBox(width: IslamicSpacing.xs),
+          Text(
+            '$count',
+            style: IslamicTextStyles.labelSmall.copyWith(
+              color: theme.red,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -389,22 +239,27 @@ class _CategoryAzkarSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsProvider>();
-    final isDark = settings.isDarkMode;
+    final theme = IslamicTheme.of(context);
 
     return Container(
-      height: MediaQuery.of(context).size.height * 0.8,
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.85,
+      ),
       decoration: BoxDecoration(
-        color: isDark ? IslamicColors.darkSystemBackground : IslamicColors.systemBackground,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(IslamicRadius.xl)),
+        color: theme.card,
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(IslamicRadius.xl),
+        ),
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Container(
             width: 40,
             height: 4,
             margin: const EdgeInsets.only(top: 12),
             decoration: BoxDecoration(
-              color: IslamicColors.separator,
+              color: theme.separator,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -412,28 +267,39 @@ class _CategoryAzkarSheet extends StatelessWidget {
             padding: const EdgeInsets.all(IslamicSpacing.md),
             child: Row(
               children: [
-                Text(
-                  settings.locale.languageCode == 'ar' ? category.nameArabic : category.name,
-                  style: IslamicTextStyles.titleLarge.copyWith(
-                    color: isDark ? IslamicColors.darkLabelPrimary : IslamicColors.labelPrimary,
+                Expanded(
+                  child: Text(
+                    settings.locale.languageCode == 'ar'
+                        ? category.nameArabic
+                        : category.name,
+                    style: IslamicTextStyles.titleLarge.copyWith(
+                      color: theme.textPrimary,
+                    ),
                   ),
                 ),
-                const Spacer(),
                 IconButton(
-                  icon: const Icon(CupertinoIcons.xmark_circle_fill),
+                  icon: Icon(
+                    CupertinoIcons.xmark_circle_fill,
+                    color: theme.textTertiary,
+                  ),
                   onPressed: () => Navigator.pop(context),
                 ),
               ],
             ),
           ),
-          Expanded(
-            child: ListView.builder(
+          // Scrollable list of azkar, capped by the parent max-height.
+          Flexible(
+            child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: IslamicSpacing.md),
-              itemCount: category.azkar.length,
-              itemBuilder: (context, index) {
-                final azkar = category.azkar[index];
-                return _AzkarListItem(azkar: azkar, onTap: () => onOpenCounter(azkar));
-              },
+              child: HIGGroup(
+                children: [
+                  for (final azkar in category.azkar)
+                    _AzkarSheetTile(
+                      azkar: azkar,
+                      onTap: () => onOpenCounter(azkar),
+                    ),
+                ],
+              ),
             ),
           ),
         ],
@@ -442,68 +308,56 @@ class _CategoryAzkarSheet extends StatelessWidget {
   }
 }
 
-class _AzkarListItem extends StatelessWidget {
+class _AzkarSheetTile extends StatelessWidget {
   final Azkar azkar;
   final VoidCallback onTap;
 
-  const _AzkarListItem({required this.azkar, required this.onTap});
+  const _AzkarSheetTile({required this.azkar, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsProvider>();
-    final progress = azkar.progress;
+    final theme = IslamicTheme.of(context);
     final isCompleted = azkar.isCompletedToday;
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: IslamicSpacing.sm),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(IslamicRadius.md),
-        child: Padding(
-          padding: const EdgeInsets.all(IslamicSpacing.md),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                settings.locale.languageCode == 'ar' ? azkar.textArabic : azkar.text,
-                style: IslamicTextStyles.bodyMedium.copyWith(
-                  fontFamily: settings.locale.languageCode == 'ar' ? 'Amiri' : 'SF Pro',
-                  color: settings.isDarkMode ? IslamicColors.darkLabelPrimary : IslamicColors.labelPrimary,
-                  height: 1.6,
-                ),
-                textDirection: settings.locale.languageCode == 'ar'
-                    ? ui.TextDirection.rtl
-                    : ui.TextDirection.ltr,
+    return HIGTile(
+      onTap: onTap,
+      label: settings.locale.languageCode == 'ar'
+          ? azkar.textArabic
+          : azkar.text,
+      subtitleWidget: Padding(
+        padding: const EdgeInsets.only(right: 0),
+        child: Row(
+          children: [
+            Text(
+              '${azkar.count} ${'times'.tr()}',
+              style: IslamicTextStyles.labelSmall.copyWith(
+                color: isCompleted ? theme.accent : theme.red,
+                fontWeight: FontWeight.w600,
               ),
-              const SizedBox(height: IslamicSpacing.sm),
-              Row(
-                children: [
-                  Text(
-                    '${azkar.count} ${'times'.tr()}',
-                    style: IslamicTextStyles.labelSmall.copyWith(
-                      color: isCompleted ? IslamicColors.primaryGreen : IslamicColors.azkarRed,
-                    ),
+            ),
+            if (azkar.reference.isNotEmpty) ...[
+              const SizedBox(width: IslamicSpacing.sm),
+              Expanded(
+                child: Text(
+                  settings.locale.languageCode == 'ar'
+                      ? azkar.referenceArabic
+                      : azkar.reference,
+                  style: IslamicTextStyles.bodySmall.copyWith(
+                    color: theme.textTertiary,
                   ),
-                  const Spacer(),
-                  if (azkar.reference.isNotEmpty)
-                    Text(azkar.reference, style: IslamicTextStyles.bodySmall),
-                ],
-              ),
-              const SizedBox(height: IslamicSpacing.xs),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(IslamicRadius.pill),
-                child: LinearProgressIndicator(
-                  value: progress,
-                  minHeight: 3,
-                  backgroundColor: IslamicColors.separator.withValues(alpha: 0.2),
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    isCompleted ? IslamicColors.primaryGreen : IslamicColors.azkarRed,
-                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
-          ),
+          ],
         ),
+      ),
+      trailing: Icon(
+        CupertinoIcons.chevron_right,
+        size: 16,
+        color: theme.textTertiary,
       ),
     );
   }
@@ -568,16 +422,19 @@ class _AzkarCounterSheetState extends State<_AzkarCounterSheet>
   @override
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsProvider>();
-    final isDark = settings.isDarkMode;
+    final theme = IslamicTheme.of(context);
+    final isCompleted = _count >= widget.azkar.count;
     final progress = _count / widget.azkar.count;
 
     return Container(
-      decoration: BoxDecoration(
-        color: isDark ? IslamicColors.darkSystemBackground : IslamicColors.systemBackground,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(IslamicRadius.xl)),
-      ),
       constraints: BoxConstraints(
         maxHeight: MediaQuery.of(context).size.height * 0.85,
+      ),
+      decoration: BoxDecoration(
+        color: theme.card,
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(IslamicRadius.xl),
+        ),
       ),
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(IslamicSpacing.lg),
@@ -589,11 +446,11 @@ class _AzkarCounterSheetState extends State<_AzkarCounterSheet>
               height: 4,
               margin: const EdgeInsets.only(bottom: IslamicSpacing.lg),
               decoration: BoxDecoration(
-                color: IslamicColors.separator,
+                color: theme.separator,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
-            // Progress ring
+            // Progress ring with the target/current counter (e.g. 10/3).
             SizedBox(
               width: 200,
               height: 200,
@@ -603,11 +460,9 @@ class _AzkarCounterSheetState extends State<_AzkarCounterSheet>
                   CircularProgressIndicator(
                     value: progress,
                     strokeWidth: 12,
-                    backgroundColor: IslamicColors.separator.withValues(alpha: 0.2),
+                    backgroundColor: theme.separator.withValues(alpha: 0.2),
                     valueColor: AlwaysStoppedAnimation<Color>(
-                      _count >= widget.azkar.count
-                          ? IslamicColors.primaryGreen
-                          : IslamicColors.azkarRed,
+                      isCompleted ? theme.accent : theme.red,
                     ),
                   ),
                   Column(
@@ -627,11 +482,9 @@ class _AzkarCounterSheetState extends State<_AzkarCounterSheet>
                                     style: IslamicTextStyles.displayLarge.copyWith(
                                       fontSize: 64,
                                       fontWeight: FontWeight.w300,
-                                      color: _count >= widget.azkar.count
-                                          ? IslamicColors.primaryGreen
-                                          : (isDark
-                                              ? IslamicColors.darkLabelPrimary
-                                              : IslamicColors.labelPrimary),
+                                      color: isCompleted
+                                          ? theme.accent
+                                          : theme.textPrimary,
                                     ),
                                   ),
                                   TextSpan(
@@ -639,9 +492,7 @@ class _AzkarCounterSheetState extends State<_AzkarCounterSheet>
                                     style: IslamicTextStyles.displayLarge.copyWith(
                                       fontSize: 32,
                                       fontWeight: FontWeight.w400,
-                                      color: isDark
-                                          ? IslamicColors.darkLabelTertiary
-                                          : IslamicColors.labelTertiary,
+                                      color: theme.textTertiary,
                                     ),
                                   ),
                                 ],
@@ -656,16 +507,14 @@ class _AzkarCounterSheetState extends State<_AzkarCounterSheet>
               ),
             ),
             const SizedBox(height: IslamicSpacing.xl),
-            // Azkar text
+            // Azkar text.
             Text(
               settings.locale.languageCode == 'ar'
                   ? widget.azkar.textArabic
                   : widget.azkar.text,
               style: IslamicTextStyles.arabicLarge.copyWith(
                 fontSize: 24,
-                color: isDark
-                    ? IslamicColors.darkLabelPrimary
-                    : IslamicColors.labelPrimary,
+                color: theme.textPrimary,
               ),
               textDirection: ui.TextDirection.rtl,
               textAlign: TextAlign.center,
@@ -673,15 +522,17 @@ class _AzkarCounterSheetState extends State<_AzkarCounterSheet>
             if (widget.azkar.translation.isNotEmpty) ...[
               const SizedBox(height: IslamicSpacing.md),
               Text(
-                widget.azkar.translation,
+                settings.locale.languageCode == 'ar'
+                    ? widget.azkar.translation
+                    : widget.azkar.translation,
                 style: IslamicTextStyles.bodyMedium.copyWith(
-                  color: IslamicColors.labelSecondary,
+                  color: theme.textSecondary,
                 ),
                 textAlign: TextAlign.center,
               ),
             ],
             const SizedBox(height: IslamicSpacing.xl),
-            // Controls
+            // Controls.
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -689,46 +540,57 @@ class _AzkarCounterSheetState extends State<_AzkarCounterSheet>
                   onPressed: _decrement,
                   icon: const Icon(CupertinoIcons.minus),
                   style: IconButton.styleFrom(
-                    backgroundColor: IslamicColors.separator.withValues(alpha: 0.2),
+                    backgroundColor: theme.separator.withValues(alpha: 0.2),
                   ),
                 ),
                 const SizedBox(width: IslamicSpacing.lg),
                 IconButton.filled(
                   onPressed: _increment,
-                  icon: const Icon(CupertinoIcons.plus),
+                  icon: Icon(
+                    CupertinoIcons.plus,
+                    color: theme.textPrimary,
+                  ),
                   style: IconButton.styleFrom(
-                    backgroundColor: IslamicColors.azkarRed,
+                    backgroundColor: theme.red,
                     padding: const EdgeInsets.all(IslamicSpacing.lg),
                   ),
                 ),
                 const SizedBox(width: IslamicSpacing.lg),
                 IconButton.filled(
                   onPressed: _reset,
-                  icon: const Icon(CupertinoIcons.arrow_counterclockwise),
+                  icon: Icon(
+                    CupertinoIcons.arrow_counterclockwise,
+                    color: theme.textPrimary,
+                  ),
                   style: IconButton.styleFrom(
-                    backgroundColor: IslamicColors.separator.withValues(alpha: 0.2),
+                    backgroundColor: theme.separator.withValues(alpha: 0.2),
                   ),
                 ),
               ],
             ),
-            if (_count >= widget.azkar.count) ...[
+            if (isCompleted) ...[
               const SizedBox(height: IslamicSpacing.lg),
               Container(
                 padding: const EdgeInsets.all(IslamicSpacing.md),
                 decoration: BoxDecoration(
-                  color: IslamicColors.primaryGreen.withValues(alpha: 0.15),
+                  color: theme.accent.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(IslamicRadius.md),
-                  border: Border.all(color: IslamicColors.primaryGreen.withValues(alpha: 0.3)),
+                  border: Border.all(
+                    color: theme.accent.withValues(alpha: 0.3),
+                  ),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(CupertinoIcons.checkmark_seal_fill, color: IslamicColors.primaryGreen),
+                    Icon(
+                      CupertinoIcons.checkmark_seal_fill,
+                      color: theme.accent,
+                    ),
                     const SizedBox(width: IslamicSpacing.sm),
                     Text(
                       'azkar_completed'.tr(),
                       style: IslamicTextStyles.titleMedium.copyWith(
-                        color: IslamicColors.primaryGreenDark,
+                        color: theme.accent,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -741,25 +603,4 @@ class _AzkarCounterSheetState extends State<_AzkarCounterSheet>
       ),
     );
   }
-}
-
-class _TabBarDelegate extends SliverPersistentHeaderDelegate {
-  final TabBar tabBar;
-  final Color backgroundColor;
-
-  _TabBarDelegate({required this.tabBar, required this.backgroundColor});
-
-  @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return Container(color: backgroundColor, child: tabBar);
-  }
-
-  @override
-  double get maxExtent => tabBar.preferredSize.height;
-
-  @override
-  double get minExtent => tabBar.preferredSize.height;
-
-  @override
-  bool shouldRebuild(covariant SliverPersistentHeaderDelegate oldDelegate) => false;
 }

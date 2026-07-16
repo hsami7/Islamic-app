@@ -7,6 +7,7 @@ import 'package:easy_localization/easy_localization.dart';
 import '../../utils/numerals.dart';
 import '../../constants/app_design.dart';
 import '../../theme/islamic_theme.dart';
+import '../../widgets/hig.dart';
 import '../../models/surah.dart';
 import '../../models/prayer_times.dart';
 import '../../providers/prayer_times_provider.dart';
@@ -56,26 +57,44 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final isArabic = settings.locale.languageCode == 'ar';
 
-    return Scaffold(
+    return HIGScaffold(
+      useScrollView: false,
       body: Stack(
         children: [
-          // Weather-reactive sky background
+          // Weather-reactive sky background (kept behind the grouped content).
           _SkyBackground(weather: _weather),
-          SafeArea(
-            child: RefreshIndicator(
-              onRefresh: () async {
-                await prayer.refresh(settings);
-                await _loadWeather();
-              },
-              child: ListView(
-                padding: const EdgeInsets.only(bottom: 100),
-                children: [
-                  _buildHeader(theme, isArabic, settings),
-                  _buildSunArcCard(theme, prayer, isArabic),
-                  _buildAzkarCard(theme, azkar, isArabic),
-                  _buildQuranCard(theme, quran, settings, isArabic),
-                  const SizedBox(height: IslamicSpacing.lg),
-                ],
+          Positioned.fill(
+            child: SafeArea(
+              child: RefreshIndicator(
+                onRefresh: () async {
+                  await prayer.refresh(settings);
+                  await _loadWeather();
+                },
+                color: theme.accent,
+                child: CustomScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: _buildHeader(theme, isArabic, settings),
+                    ),
+                    SliverToBoxAdapter(
+                      child: _buildSunArcCard(theme, prayer, isArabic),
+                    ),
+                    SliverToBoxAdapter(
+                      child: _buildAzkarCard(theme, azkar, isArabic),
+                    ),
+                    SliverToBoxAdapter(
+                      child:
+                          _buildQuranCard(theme, quran, settings, isArabic),
+                    ),
+                    const SliverToBoxAdapter(
+                      child: SizedBox(height: IslamicSpacing.lg),
+                    ),
+                    const SliverToBoxAdapter(
+                      child: SizedBox(height: 120), // floating nav clearance
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -98,42 +117,61 @@ class _HomeScreenState extends State<HomeScreen> {
     return 'Good night';
   }
 
-  Widget _buildHeader(IslamicTheme theme, bool isArabic, SettingsProvider settings) {
+  Widget _buildHeader(
+    IslamicTheme theme,
+    bool isArabic,
+    SettingsProvider settings,
+  ) {
     final isDark = settings.isDarkMode;
     return Padding(
       padding: const EdgeInsets.fromLTRB(
-        IslamicSpacing.lg,
+        kHIGMargin,
         IslamicSpacing.md,
-        IslamicSpacing.lg,
+        kHIGMargin,
         IslamicSpacing.sm,
       ),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 22,
-            backgroundColor: Colors.white.withValues(alpha: 0.18),
-            child: const Icon(
+          Container(
+            decoration: BoxDecoration(
+              color: theme.card.withValues(alpha: 0.55),
+              shape: BoxShape.circle,
+            ),
+            padding: const EdgeInsets.all(8),
+            child: Icon(
               CupertinoIcons.person_fill,
-              color: Colors.white,
+              color: theme.textPrimary,
               size: 22,
             ),
           ),
           const SizedBox(width: IslamicSpacing.sm),
           Expanded(
-            child: Text(
-              _greeting(isArabic),
-              style: IslamicTextStyles.arabicMedium.copyWith(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-              ),
-              textDirection: ui.TextDirection.rtl,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _greeting(isArabic),
+                  style: IslamicTextStyles.arabicMedium.copyWith(
+                    color: theme.textPrimary,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  textDirection: ui.TextDirection.rtl,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'تطبيقك الإسلامي اليومي',
+                  style: IslamicTextStyles.footnote.copyWith(
+                    color: theme.textSecondary,
+                  ),
+                ),
+              ],
             ),
           ),
           IconButton(
             icon: Icon(
               isDark ? CupertinoIcons.sun_max_fill : CupertinoIcons.moon_fill,
-              color: Colors.white,
+              color: theme.textPrimary,
             ),
             tooltip: isDark ? 'light_mode'.tr() : 'dark_mode'.tr(),
             onPressed: () {
@@ -141,19 +179,27 @@ class _HomeScreenState extends State<HomeScreen> {
             },
           ),
           IconButton(
-            icon: const Icon(CupertinoIcons.bell_fill, color: Colors.white),
-            onPressed: () {},
+            icon: Icon(
+              CupertinoIcons.bell_fill,
+              color: theme.textPrimary,
+            ),
+            tooltip: 'notifications'.tr(),
+            onPressed: () => widget.onNavigate?.call(3),
           ),
           IconButton(
-            icon: const Icon(CupertinoIcons.line_horizontal_3, color: Colors.white),
-            onPressed: () {},
+            icon: Icon(
+              CupertinoIcons.line_horizontal_3,
+              color: theme.textPrimary,
+            ),
+            tooltip: 'القائمة',
+            onPressed: () => widget.onNavigate?.call(5),
           ),
         ],
       ),
     );
   }
 
-  /// Sun-position arc + Hijri date + current/next prayer.
+  /// Sun-position arc + Hijri date + current/next prayer, wrapped in a HIGCard.
   Widget _buildSunArcCard(
     IslamicTheme theme,
     PrayerTimesProvider prayer,
@@ -162,9 +208,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final hijri = prayer.todayPrayerTimes?.hijriDate;
     final dateText = hijri != null
         ? '${toLatinDigits(hijri.day)} ${_hijriMonthAr(hijri.monthNumber)} ${toLatinDigits(hijri.year)}'
-        : (prayer.isLoading
-            ? 'loading'.tr()
-            : 'set_location_hint'.tr());
+        : (prayer.isLoading ? 'loading'.tr() : 'set_location_hint'.tr());
 
     final next = prayer.nextPrayer;
     final current = _currentPrayer(prayer);
@@ -172,104 +216,77 @@ class _HomeScreenState extends State<HomeScreen> {
     final religiousStatus = current?.arabicName ?? next?.arabicName ?? '';
     final religiousHint = current != null
         ? 'وقت ${current.arabicName}'
-        : (next != null ? 'الوقت المتبقي' : (prayer.isLoading ? 'loading_prayer_times'.tr() : 'tap_to_refresh'.tr()));
+        : (next != null
+            ? 'الوقت المتبقي'
+            : (prayer.isLoading
+                ? 'loading_prayer_times'.tr()
+                : 'tap_to_refresh'.tr()));
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: IslamicSpacing.lg,
+    return HIGCard(
+      margin: const EdgeInsets.symmetric(
+        horizontal: kHIGMargin,
         vertical: IslamicSpacing.sm,
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(IslamicRadius.xl),
-        child: BackdropFilter(
-          filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-          child: Container(
-            padding: const EdgeInsets.all(IslamicSpacing.lg),
-            decoration: BoxDecoration(
-              color: theme.card,
-              borderRadius: BorderRadius.circular(IslamicRadius.xl),
-              border: Border.all(
-                color: theme.gold.withValues(alpha: 0.35),
-              ),
+      padding: const EdgeInsets.all(IslamicSpacing.lg),
+      color: theme.card,
+      child: Column(
+        children: [
+          _SunArc(progress: prayer.getProgressToNextPrayer()),
+          const SizedBox(height: IslamicSpacing.md),
+          HIGSectionHeader(
+            text: dateText,
+            margin: EdgeInsets.zero,
+          ),
+          const SizedBox(height: IslamicSpacing.xs),
+          Text(
+            '$religiousStatus $prayerTime',
+            style: IslamicTextStyles.bodyMedium.copyWith(
+              color: theme.textSecondary,
             ),
-            child: Column(
-              children: [
-                _SunArc(progress: prayer.getProgressToNextPrayer()),
-                const SizedBox(height: IslamicSpacing.md),
-                Text(
-                  dateText,
-                  style: IslamicTextStyles.arabicMedium.copyWith(
-                    color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w700,
-                  ),
-                  textDirection: ui.TextDirection.rtl,
+            textDirection: ui.TextDirection.rtl,
+          ),
+          const SizedBox(height: IslamicSpacing.xs),
+          Text(
+            religiousHint,
+            style: IslamicTextStyles.footnote.copyWith(
+              color: theme.textTertiary,
+            ),
+            textDirection: ui.TextDirection.rtl,
+          ),
+          const SizedBox(height: IslamicSpacing.md),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: GestureDetector(
+              onTap: () => widget.onNavigate?.call(2),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: IslamicSpacing.md,
+                  vertical: IslamicSpacing.sm,
                 ),
-                const SizedBox(height: IslamicSpacing.xs),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                decoration: BoxDecoration(
+                  color: theme.gold,
+                  borderRadius: BorderRadius.circular(IslamicRadius.pill),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      '$religiousStatus $prayerTime',
-                      style: IslamicTextStyles.bodyMedium.copyWith(
-                        color: Colors.white.withValues(alpha: 0.95),
-                      ),
-                      textDirection: ui.TextDirection.rtl,
-                    ),
+                    const Text('🌅', style: TextStyle(fontSize: 16)),
                     const SizedBox(width: IslamicSpacing.xs),
                     Text(
-                      '🕌',
-                      style: IslamicTextStyles.bodyMedium
-                          .copyWith(color: Colors.white),
+                      'لعل الدعاء مستجاب',
+                      style: IslamicTextStyles.labelMedium.copyWith(
+                        color: theme.isDark
+                            ? IslamicColors.darkLabelPrimary
+                            : IslamicColors.labelPrimary,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ],
                 ),
-                const SizedBox(height: IslamicSpacing.xs),
-                Text(
-                  religiousHint,
-                  style: IslamicTextStyles.bodySmall.copyWith(
-                    color: Colors.white.withValues(alpha: 0.8),
-                  ),
-                  textDirection: ui.TextDirection.rtl,
-                ),
-                const SizedBox(height: IslamicSpacing.sm),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: GestureDetector(
-                    onTap: () => widget.onNavigate?.call(2),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: IslamicSpacing.md,
-                        vertical: IslamicSpacing.sm,
-                      ),
-                      decoration: BoxDecoration(
-                        color: IslamicColors.accentGold,
-                        borderRadius: BorderRadius.circular(IslamicRadius.pill),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            '🌅',
-                            style: const TextStyle(fontSize: 16),
-                          ),
-                          const SizedBox(width: IslamicSpacing.xs),
-                          Text(
-                            'لعل الدعاء مستجاب',
-                            style: IslamicTextStyles.labelMedium.copyWith(
-                              color: Colors.black87,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -286,67 +303,64 @@ class _HomeScreenState extends State<HomeScreen> {
       orElse: () => azkar.categories.first,
     );
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: IslamicSpacing.lg,
+    return HIGCard(
+      margin: const EdgeInsets.symmetric(
+        horizontal: kHIGMargin,
         vertical: IslamicSpacing.sm,
       ),
-      child: GestureDetector(
-        onTap: () => widget.onNavigate?.call(4),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(IslamicRadius.xl),
-          child: BackdropFilter(
-            filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-            child: Container(
-              padding: const EdgeInsets.all(IslamicSpacing.md),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(IslamicRadius.xl),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.2),
+      padding: const EdgeInsets.all(IslamicSpacing.md),
+      color: theme.card,
+      onTap: () => widget.onNavigate?.call(4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: theme.red.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(IslamicRadius.sm + 2),
+                ),
+                child: Icon(
+                  CupertinoIcons.sparkles,
+                  color: theme.red,
+                  size: 20,
                 ),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        CupertinoIcons.sparkles,
-                        color: IslamicColors.azkarRed,
-                        size: 20,
-                      ),
-                      const SizedBox(width: IslamicSpacing.xs),
-                      Expanded(
-                        child: Text(
-                          category.nameArabic,
-                          style: IslamicTextStyles.arabicMedium.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                          ),
-                          textDirection: ui.TextDirection.rtl,
-                        ),
-                      ),
-                    ],
+              const SizedBox(width: IslamicSpacing.sm),
+              Expanded(
+                child: Text(
+                  category.nameArabic,
+                  style: IslamicTextStyles.arabicMedium.copyWith(
+                    color: theme.textPrimary,
+                    fontWeight: FontWeight.w700,
                   ),
-                  const SizedBox(height: IslamicSpacing.sm),
-                  if (category.azkar.isNotEmpty)
-                    Text(
-                      category.azkar.first.textArabic,
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                      style: IslamicTextStyles.arabicMedium.copyWith(
-                        color: Colors.white.withValues(alpha: 0.92),
-                        fontSize: 18,
-                        height: 1.6,
-                      ),
-                      textDirection: ui.TextDirection.rtl,
-                    ),
-                ],
+                  textDirection: ui.TextDirection.rtl,
+                ),
               ),
-            ),
+              Icon(
+                CupertinoIcons.chevron_left,
+                color: theme.textTertiary,
+                size: 18,
+              ),
+            ],
           ),
-        ),
+          const SizedBox(height: IslamicSpacing.sm),
+          if (category.azkar.isNotEmpty)
+            Text(
+              category.azkar.first.textArabic,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: IslamicTextStyles.arabicMedium.copyWith(
+                color: theme.textSecondary,
+                fontSize: 18,
+                height: 1.6,
+              ),
+              textDirection: ui.TextDirection.rtl,
+            ),
+        ],
       ),
     );
   }
@@ -387,104 +401,98 @@ class _HomeScreenState extends State<HomeScreen> {
       ayahPreview = '${surah.englishNameTranslation} • $progress / $total';
     }
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: IslamicSpacing.lg,
+    return HIGCard(
+      margin: const EdgeInsets.symmetric(
+        horizontal: kHIGMargin,
         vertical: IslamicSpacing.sm,
       ),
-      child: GestureDetector(
-        onTap: () {
-          if (surah != null) {
-            Navigator.push(
-              context,
-              CupertinoPageRoute(
-                builder: (_) => SurahDetailScreen(surah: surah),
-              ),
-            );
-          } else {
-            widget.onNavigate?.call(1);
-          }
-        },
-        child: Container(
-          padding: const EdgeInsets.all(IslamicSpacing.lg),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(IslamicRadius.xl),
-            boxShadow: IslamicShadows.card,
+      padding: const EdgeInsets.all(IslamicSpacing.lg),
+      color: theme.card,
+      onTap: () {
+        if (surah != null) {
+          Navigator.push(
+            context,
+            CupertinoPageRoute(
+              builder: (_) => SurahDetailScreen(surah: surah),
+            ),
+          );
+        } else {
+          widget.onNavigate?.call(1);
+        }
+      },
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            surahLabel,
+            style: IslamicTextStyles.arabicMedium.copyWith(
+              color: theme.textPrimary,
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+            ),
+            textDirection: ui.TextDirection.rtl,
+            textAlign: TextAlign.center,
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                surahLabel,
-                style: IslamicTextStyles.arabicMedium.copyWith(
-                  color: settings.isDarkMode
-                      ? IslamicColors.darkLabelPrimary
-                      : IslamicColors.labelPrimary,
-                  fontSize: 22,
-                  fontWeight: FontWeight.w700,
-                ),
-                textDirection: ui.TextDirection.rtl,
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: IslamicSpacing.sm),
-              Text(
-                ayahPreview,
-                style: IslamicTextStyles.arabicLarge.copyWith(
-                  color: IslamicColors.labelSecondary,
-                  fontSize: 24,
-                  height: 1.6,
-                ),
-                textDirection: ui.TextDirection.rtl,
-                textAlign: TextAlign.center,
-                maxLines: 4,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: IslamicSpacing.md),
-              ElevatedButton(
-                onPressed: () {
-                  if (surah != null) {
-                    Navigator.push(
-                      context,
-                      CupertinoPageRoute(
-                        builder: (_) => SurahDetailScreen(surah: surah),
-                      ),
-                    );
-                  } else {
-                    widget.onNavigate?.call(1);
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: IslamicColors.primaryGreen,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    vertical: IslamicSpacing.sm,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(IslamicRadius.pill),
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      buttonLabel,
-                      style: IslamicTextStyles.labelLarge.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(width: IslamicSpacing.xs),
-                    const Icon(
-                      CupertinoIcons.arrow_left,
-                      size: 18,
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          const SizedBox(height: IslamicSpacing.sm),
+          Text(
+            ayahPreview,
+            style: IslamicTextStyles.arabicLarge.copyWith(
+              color: theme.textSecondary,
+              fontSize: 24,
+              height: 1.6,
+            ),
+            textDirection: ui.TextDirection.rtl,
+            textAlign: TextAlign.center,
+            maxLines: 4,
+            overflow: TextOverflow.ellipsis,
           ),
-        ),
+          const SizedBox(height: IslamicSpacing.md),
+          ElevatedButton(
+            onPressed: () {
+              if (surah != null) {
+                Navigator.push(
+                  context,
+                  CupertinoPageRoute(
+                    builder: (_) => SurahDetailScreen(surah: surah),
+                  ),
+                );
+              } else {
+                widget.onNavigate?.call(1);
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: theme.accent,
+              foregroundColor: theme.isDark
+                  ? IslamicColors.darkLabelPrimary
+                  : IslamicColors.labelPrimary,
+              padding: const EdgeInsets.symmetric(
+                vertical: IslamicSpacing.sm,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(IslamicRadius.pill),
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  buttonLabel,
+                  style: IslamicTextStyles.labelLarge.copyWith(
+                    color: theme.isDark
+                        ? IslamicColors.darkLabelPrimary
+                        : IslamicColors.labelPrimary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(width: IslamicSpacing.xs),
+                const Icon(
+                  CupertinoIcons.arrow_left,
+                  size: 18,
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -511,7 +519,8 @@ class _HomeScreenState extends State<HomeScreen> {
   DateTime _parse(String time) {
     final parts = time.split(':');
     final now = DateTime.now();
-    return DateTime(now.year, now.month, now.day, int.parse(parts[0]), int.parse(parts[1]));
+    return DateTime(now.year, now.month, now.day, int.parse(parts[0]),
+        int.parse(parts[1]));
   }
 
   String _azkarCategoryForTime(PrayerTimesProvider prayer) {
@@ -609,9 +618,7 @@ class _SkyBackground extends StatelessWidget {
         scene = _FogScene();
       case WeatherCondition.clear:
       default:
-        scene = (hour < 6 || hour >= 19)
-            ? _StarsOverlay()
-            : _SunScene();
+        scene = (hour < 6 || hour >= 19) ? _StarsOverlay() : _SunScene();
     }
 
     return Container(
@@ -669,7 +676,8 @@ class _CloudScene extends StatelessWidget {
     );
   }
 
-  Widget _cloud({required double top, required double left, required double scale}) {
+  Widget _cloud(
+      {required double top, required double left, required double scale}) {
     return Positioned(
       top: top,
       left: left,
@@ -685,9 +693,19 @@ class _CloudScene extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Container(width: 50, height: 50, decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.18), shape: BoxShape.circle)),
+              Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.18),
+                      shape: BoxShape.circle)),
               const SizedBox(width: 6),
-              Container(width: 36, height: 36, decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.14), shape: BoxShape.circle)),
+              Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.14),
+                      shape: BoxShape.circle)),
             ],
           ),
         ),
@@ -753,9 +771,24 @@ class _FogScene extends StatelessWidget {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        Positioned(top: 90, left: 0, right: 0, child: Container(height: 60, color: Colors.white.withValues(alpha: 0.08))),
-        Positioned(top: 160, left: 0, right: 0, child: Container(height: 80, color: Colors.white.withValues(alpha: 0.06))),
-        Positioned(top: 250, left: 0, right: 0, child: Container(height: 70, color: Colors.white.withValues(alpha: 0.05))),
+        Positioned(
+            top: 90,
+            left: 0,
+            right: 0,
+            child: Container(
+                height: 60, color: Colors.white.withValues(alpha: 0.08))),
+        Positioned(
+            top: 160,
+            left: 0,
+            right: 0,
+            child: Container(
+                height: 80, color: Colors.white.withValues(alpha: 0.06))),
+        Positioned(
+            top: 250,
+            left: 0,
+            right: 0,
+            child: Container(
+                height: 70, color: Colors.white.withValues(alpha: 0.05))),
       ],
     );
   }
@@ -765,7 +798,23 @@ class _FogScene extends StatelessWidget {
 class _StarsOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final rng = [0.1, 0.2, 0.35, 0.5, 0.6, 0.7, 0.8, 0.9, 0.15, 0.45, 0.75, 0.25, 0.55, 0.85, 0.4];
+    final rng = [
+      0.1,
+      0.2,
+      0.35,
+      0.5,
+      0.6,
+      0.7,
+      0.8,
+      0.9,
+      0.15,
+      0.45,
+      0.75,
+      0.25,
+      0.55,
+      0.85,
+      0.4
+    ];
     return Stack(
       children: List.generate(rng.length, (i) {
         return Positioned(
@@ -859,6 +908,5 @@ class _SunArcPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _SunArcPainter old) =>
-      old.progress != progress;
+  bool shouldRepaint(covariant _SunArcPainter old) => old.progress != progress;
 }

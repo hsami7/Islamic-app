@@ -15,8 +15,7 @@ import 'dart:io';
 /// 1. Quran reading -> bookmark -> settings -> prayer times
 /// 2. Prayer times -> notifications -> settings -> azkar
 /// 3. Qibla calibration -> compass -> prayer times
-/// 4. Hadith browsing -> search -> bookmark -> favorites
-/// 5. Language switching (EN/AR) + theme toggle + RTL layout
+/// 4. Language switching (EN/AR) + theme toggle + RTL layout
 ///
 /// Run with: flutter test integration_test/main_app_flow_test.dart
 void main() {
@@ -36,8 +35,6 @@ void main() {
       SurahAdapter(),
       AyahAdapter(),
       PrayerTimesAdapter(),
-      HadithCollectionAdapter(),
-      HadithAdapter(),
       AzkarCategoryAdapter(),
       AzkarAdapter(),
       QiblaDirectionAdapter(),
@@ -94,13 +91,7 @@ void main() {
     } else if (index == 0) {
       await tester.tap(find.byIcon(CupertinoIcons.book_fill).first);
     } else if (index == 3) {
-      // Hadith also uses book_fill, tap the second occurrence
-      final bookIcons = find.byIcon(CupertinoIcons.book_fill);
-      if (bookIcons.evaluate().length >= 2) {
-        await tester.tap(bookIcons.at(1));
-      } else {
-        await tester.tap(bookIcons.first);
-      }
+      await tester.tap(find.byIcon(CupertinoIcons.sparkles).first);
     }
     await tester.pumpAndSettle(const Duration(seconds: 1));
   }
@@ -237,60 +228,10 @@ void main() {
   });
 
   // ---------------------------------------------------------------------------
-  // Flow 4: Hadith browsing -> search -> bookmark -> favorites
+  // Flow 4: Language switching + theme toggle + RTL layout
   // ---------------------------------------------------------------------------
 
-  group('Flow 4: Hadith browsing -> search -> bookmark -> favorites', () {
-    testWidgets('navigate to Hadith, search, bookmark, view favorites', (tester) async {
-      await initTestHive();
-      await pumpApp(tester);
-
-      // Step 1: Navigate to Hadith tab (index 3)
-      await navigateToTab(tester, 3);
-      await tester.pumpAndSettle(const Duration(seconds: 2));
-
-      // Verify Hadith screen
-      expect(find.text('hadith'), findsWidgets);
-      expect(find.text('collections'), findsWidgets);
-
-      // Step 2: Tap search icon to open search
-      final searchIcon = find.byIcon(CupertinoIcons.search);
-      if (searchIcon.evaluate().isNotEmpty) {
-        await tester.tap(searchIcon.first);
-        await tester.pumpAndSettle(const Duration(milliseconds: 500));
-
-        // Verify search bar appears
-        expect(find.byType(TextField), findsWidgets);
-
-        // Type a search query
-        await tester.enterText(find.byType(TextField).first, 'faith');
-        await tester.pumpAndSettle(const Duration(seconds: 1));
-
-        // Close search
-        final clearIcon = find.byIcon(CupertinoIcons.clear);
-        if (clearIcon.evaluate().isNotEmpty) {
-          await tester.tap(clearIcon.first);
-          await tester.pumpAndSettle(const Duration(milliseconds: 500));
-        }
-      }
-
-      // Step 3: Navigate to bookmarks tab within Hadith
-      final bookmarksTab = find.text('bookmarks');
-      if (bookmarksTab.evaluate().isNotEmpty) {
-        await tester.tap(bookmarksTab.first);
-        await tester.pumpAndSettle(const Duration(seconds: 1));
-
-        // Verify bookmarks view (should show no bookmarks message)
-        expect(find.text('no_bookmarks'), findsWidgets);
-      }
-    });
-  });
-
-  // ---------------------------------------------------------------------------
-  // Flow 5: Language switching + theme toggle + RTL layout
-  // ---------------------------------------------------------------------------
-
-  group('Flow 5: Language switching (EN/AR) + theme toggle + RTL layout', () {
+  group('Flow 4: Language switching (EN/AR) + theme toggle + RTL layout', () {
     testWidgets('switch language, toggle theme, verify RTL layout', (tester) async {
       await initTestHive();
       await pumpApp(tester);
@@ -358,10 +299,10 @@ void main() {
       await initTestHive();
       await pumpApp(tester);
 
-      // Navigate through all 5 tabs
-      final tabNames = ['quran', 'prayer_times', 'qibla', 'hadith', 'azkar'];
+      // Navigate through all 5 tabs (quran=0, prayer_times=1, qibla=2, azkar=3)
+      final tabNames = ['quran', 'prayer_times', 'qibla', 'azkar'];
 
-      for (int i = 0; i < 5; i++) {
+      for (int i = 0; i < 4; i++) {
         await navigateToTab(tester, i);
         await tester.pumpAndSettle(const Duration(seconds: 1));
 
